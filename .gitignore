@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 .preview
+.webview-data
 
 # Editor directories and files
 .vscode/*

@@ -42,6 +42,9 @@ npm run dev            # http://localhost:1420
 # 桌面窗口(需要 Rust + MSVC 构建工具)
 npm run desktop        # 等价于 tauri dev
 
+# Windows 本机推荐:处理 WebView2 数据目录问题后再启动
+npm run desktop:local
+
 # 打包安装包
 npm run bundle
 ```
@@ -63,3 +66,17 @@ npm run bundle
 
 - 数据目前仅存于浏览器 `localStorage`(key: `maybe-todo.notes.v1`),清缓存会丢,勿存重要内容。
 - `src-tauri` 的 crate 名与 lib 名分别为 `maybe-todo` / `maybe_todo_lib`。
+
+## 本机已知问题:WebView2 数据目录
+
+在部分受管控的 Windows 环境下,WebView2 无法在 `%LOCALAPPDATA%` 或 `%TEMP%` 创建用户数据目录,
+`npm run desktop` 会以 `Failed to setup app: 拒绝访问 (os error 5)` 或 `0x800700AA` 退出。
+
+解决办法是显式指定一个可写的用户数据目录,`scripts/dev-desktop.cmd` 已封装:
+
+```bat
+set WEBVIEW2_USER_DATA_FOLDER=<可写目录>
+call npm run tauri dev
+```
+
+普通开发机不需要这一步,直接用 `npm run desktop` 即可。

@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "desktop": "tauri dev",
+    "desktop:local": "scripts\\dev-desktop.cmd",
     "bundle": "tauri build"
   },
   "dependencies": {

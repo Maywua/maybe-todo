@@ -48,7 +48,7 @@ function loadNotes(): Note[] {
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return seedNotes;
     const notes = parsed.filter(isNote);
-    return notes.length > 0 ? notes : seedNotes;
+    return notes;
   } catch {
     return seedNotes;
   }
