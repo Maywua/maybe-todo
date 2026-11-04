@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #f6f2e9;
+  --color-card: #fffdf8;
+  --color-ink: #1b1a16;
+  --color-muted: #6f6859;
+  --color-line: #e4dccb;
+  --color-accent: #b96a35;
+  --color-accent-soft: #f2e2cd;
+  --color-leaf: #3f6b52;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-display: "Iowan Old Style", "Palatino Linotype", Georgia,
+    "Songti SC", "SimSun", serif;
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    @apply bg-paper text-ink font-sans antialiased;
+  }
+
+  ::selection {
+    background: #ecd7b8;
+    color: #1b1a16;
+  }
+}
+
+@layer utilities {
+  .bg-dots {
+    background-image: radial-gradient(
+      rgba(27, 26, 22, 0.12) 1px,
+      transparent 1px
+    );
+    background-size: 18px 18px;
+    -webkit-mask-image: radial-gradient(
+      ellipse 75% 55% at 50% 0%,
+      #000 20%,
+      transparent 78%
+    );
+    mask-image: radial-gradient(
+      ellipse 75% 55% at 50% 0%,
+      #000 20%,
+      transparent 78%
+    );
+  }
+
+  .animate-rise {
+    animation: rise 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
