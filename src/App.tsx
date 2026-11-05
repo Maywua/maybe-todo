@@ -1,198 +1,499 @@
-import { useEffect, useRef, useState } from "react";
-import FeatureGrid from "./components/FeatureGrid";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { AnimationEvent as ReactAnimationEvent } from "react";
+import HomeHeader from "./components/HomeHeader";
+import NoteCard from "./components/NoteCard";
+import NoteModal from "./components/NoteModal";
+import SortHeader from "./components/SortHeader";
+import TrashView from "./components/TrashView";
+import WindowControls from "./components/WindowControls";
 import Logo from "./components/Logo";
-import StatusCard from "./components/StatusCard";
-import { useNotes } from "./hooks/useNotes";
-import { inTauri } from "./lib/runtime";
+import { useColumnCount } from "./hooks/useColumnCount";
+import {
+  deleteNoteForever,
+  emptyTrash,
+  listNotes,
+  listTrashed,
+  purgeExpired,
+  quitApp,
+  reorderNotes,
+  restoreNote,
+} from "./lib/repo";
+import type { Note, NoteType, View } from "./types";
+
+type ModalState =
+  | { mode: "new"; type: NoteType }
+  | { mode: "edit"; id: string };
+
+const sortNotes = (notes: Note[]) =>
+  [...notes].sort(
+    (left, right) => left.order - right.order || left.createdAt - right.createdAt,
+  );
+
+let listHasAnimated = false;
 
 export default function App() {
-  const { notes, add, toggle, remove } = useNotes();
-  const [draft, setDraft] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [booted, setBooted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [trashed, setTrashed] = useState<Note[]>([]);
+  const [view, setView] = useState<View>("home");
+  const [modal, setModal] = useState<ModalState | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [animateList, setAnimateList] = useState(() => !listHasAnimated);
+  const [sorting, setSorting] = useState(false);
+  const [sortSaving, setSortSaving] = useState(false);
+  const [sortSnapshot, setSortSnapshot] = useState<Note[] | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<{
+    id: string;
+    edge: "before" | "after";
+  } | null>(null);
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        inputRef.current?.focus();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+  const toastTimer = useRef<number | null>(null);
+
+  const showToast = useCallback((message: string) => {
+    setToast(message);
+    if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => {
+      setToast(null);
+      toastTimer.current = null;
+    }, 2000);
   }, []);
 
-  const submit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const text = draft.trim();
-    if (!text) return;
-    add(text);
-    setDraft("");
+  useEffect(
+    () => () => {
+      if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
+    },
+    [],
+  );
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await purgeExpired();
+      const [nextNotes, nextTrashed] = await Promise.all([
+        listNotes(),
+        listTrashed(),
+      ]);
+      setNotes(nextNotes);
+      setTrashed(nextTrashed);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    void load();
+    const timers = [
+      window.setTimeout(() => {
+        if (alive) setBooted(true);
+      }, 300),
+      window.setTimeout(() => {
+        if (alive) setBooted(true);
+      }, 3500),
+    ];
+    return () => {
+      alive = false;
+      timers.forEach((timer) => window.clearTimeout(timer));
+    };
+  }, [load]);
+
+  const handleSaved = useCallback((saved: Note) => {
+    setNotes((previous) => {
+      const exists = previous.some((note) => note.id === saved.id);
+      const next = exists
+        ? previous.map((note) => (note.id === saved.id ? saved : note))
+        : [...previous, saved];
+      return sortNotes(next);
+    });
+  }, []);
+
+  const handleTrashed = useCallback(
+    (id: string) => {
+      setNotes((previous) => previous.filter((note) => note.id !== id));
+      setModal(null);
+      showToast("已移入回收站");
+      void listTrashed().then(setTrashed).catch(() => undefined);
+    },
+    [showToast],
+  );
+
+  const handleRestore = useCallback(
+    async (id: string) => {
+      try {
+        const restored = await restoreNote(id);
+        setTrashed((previous) => previous.filter((note) => note.id !== id));
+        setNotes((previous) =>
+          sortNotes([
+            ...previous.filter((note) => note.id !== restored.id),
+            restored,
+          ]),
+        );
+        showToast("已恢复");
+      } catch {
+        showToast("恢复失败，请重试");
+      }
+    },
+    [showToast],
+  );
+
+  const handleDeleteForever = useCallback(
+    async (id: string) => {
+      try {
+        await deleteNoteForever(id);
+        setTrashed((previous) => previous.filter((note) => note.id !== id));
+        showToast("已彻底删除");
+      } catch {
+        showToast("删除失败，请重试");
+      }
+    },
+    [showToast],
+  );
+
+  const handleEmptyTrash = useCallback(async () => {
+    try {
+      await emptyTrash();
+      setTrashed([]);
+      showToast("回收站已清空");
+    } catch {
+      showToast("清空失败，请重试");
+    }
+  }, [showToast]);
+
+  const handleExit = useCallback(async () => {
+    try {
+      await quitApp();
+    } catch (caught) {
+      showToast(caught instanceof Error ? caught.message : "退出失败");
+    }
+  }, [showToast]);
+
+  const startSort = useCallback(() => {
+    if (notes.length < 2) return;
+    setSortSnapshot(notes);
+    setDragId(null);
+    setDropTarget(null);
+    setSorting(true);
+  }, [notes]);
+
+  const cancelSort = useCallback(() => {
+    if (sortSnapshot) setNotes(sortSnapshot);
+    setSortSnapshot(null);
+    setSorting(false);
+    setDragId(null);
+    setDropTarget(null);
+  }, [sortSnapshot]);
+
+  const saveSort = useCallback(async () => {
+    if (sortSaving) return;
+    setSortSaving(true);
+    try {
+      const ids = notes.map((note) => note.id);
+      await reorderNotes(ids);
+      setNotes((previous) =>
+        previous.map((note, index) => ({ ...note, order: index })),
+      );
+      setSortSnapshot(null);
+      setSorting(false);
+      setDragId(null);
+      setDropTarget(null);
+      showToast("排序已保存");
+    } catch {
+      showToast("排序保存失败，请重试");
+    } finally {
+      setSortSaving(false);
+    }
+  }, [notes, showToast, sortSaving]);
+
+  const handleSortDragStart = useCallback(
+    (id: string) => {
+      if (sortSaving) return;
+      setDragId(id);
+      setDropTarget(null);
+    },
+    [sortSaving],
+  );
+
+  const handleSortDragOver = useCallback(
+    (id: string, edge: "before" | "after") => {
+      if (!sorting || sortSaving || !dragId || dragId === id) return;
+      setDropTarget((current) =>
+        current?.id === id && current.edge === edge
+          ? current
+          : { id, edge },
+      );
+    },
+    [dragId, sortSaving, sorting],
+  );
+
+  const handleSortDrop = useCallback(() => {
+    if (!sorting || sortSaving || !dragId || !dropTarget) {
+      setDragId(null);
+      setDropTarget(null);
+      return;
+    }
+    if (dragId === dropTarget.id) {
+      setDragId(null);
+      setDropTarget(null);
+      return;
+    }
+    const ids = notes.map((note) => note.id);
+    const from = ids.indexOf(dragId);
+    if (from === -1) {
+      setDragId(null);
+      setDropTarget(null);
+      return;
+    }
+    const [moved] = ids.splice(from, 1);
+    let insertAt = ids.indexOf(dropTarget.id);
+    if (insertAt === -1) {
+      setDragId(null);
+      setDropTarget(null);
+      return;
+    }
+    if (dropTarget.edge === "after") insertAt += 1;
+    ids.splice(insertAt, 0, moved);
+    const byId = new Map(notes.map((note) => [note.id, note]));
+    setNotes(ids.map((id) => byId.get(id) as Note));
+    setDragId(null);
+    setDropTarget(null);
+  }, [dragId, dropTarget, notes, sortSaving, sorting]);
+
+  const handleSortDragEnd = useCallback(() => {
+    setDragId(null);
+    setDropTarget(null);
+  }, []);
+
+  const openNew = useCallback((type: NoteType) => {
+    setModal({ mode: "new", type });
+  }, []);
+
+  const openEdit = useCallback((id: string) => {
+    setModal({ mode: "edit", id });
+  }, []);
+
+  const editingNote =
+    modal?.mode === "edit"
+      ? (notes.find((note) => note.id === modal.id) ?? null)
+      : null;
+
+  const columnCount = useColumnCount();
+
+  // 瀑布流：按顺序轮转分配到各列，列内卡片高度各自独立。
+  const columns: Note[][] = Array.from(
+    { length: columnCount },
+    () => [] as Note[],
+  );
+  notes.forEach((note, index) => {
+    columns[index % columnCount].push(note);
+  });
+
+  const handleListAnimationEnd = (
+    event: ReactAnimationEvent<HTMLDivElement>,
+  ) => {
+    if (event.target !== event.currentTarget) return;
+    listHasAnimated = true;
+    setAnimateList(false);
   };
 
-  const openCount = notes.filter((note) => !note.done).length;
+  return (
+    <div className="min-h-screen bg-paper text-ink">
+      {!booted && <Splash />}
+
+      {view === "home" ? (
+        <>
+          {sorting ? (
+            <SortHeader
+              saving={sortSaving}
+              onCancel={cancelSort}
+              onSave={() => void saveSort()}
+            />
+          ) : (
+            <HomeHeader
+              onNew={openNew}
+              onOpenTrash={() => setView("trash")}
+              onStartSort={startSort}
+              canSort={notes.length >= 2}
+              onExit={() => void handleExit()}
+              blocked={modal !== null}
+            />
+          )}
+
+          <main className="mx-auto w-full max-w-5xl px-4 pb-24 pt-8">
+            {loading ? (
+              <ListSkeleton columnCount={columnCount} />
+            ) : error ? (
+              <ErrorState message={error} onRetry={() => void load()} />
+            ) : notes.length === 0 ? (
+              <EmptyHome onNew={openNew} />
+            ) : (
+              <div
+                className={`flex items-start gap-3 ${
+                  booted && animateList ? "animate-list-in" : ""
+                }`}
+                onAnimationEnd={handleListAnimationEnd}
+              >
+                {columns.map((column, columnIndex) => (
+                  <ul
+                    key={columnIndex}
+                    className="flex min-w-0 flex-1 flex-col gap-3"
+                  >
+                    {column.map((note) => (
+                      <NoteCard
+                        key={note.id}
+                        note={note}
+                        sorting={sorting}
+                        dragging={dragId === note.id}
+                        dropEdge={
+                          dropTarget?.id === note.id
+                            ? dropTarget.edge
+                            : null
+                        }
+                        onOpen={() => openEdit(note.id)}
+                        onDragStart={handleSortDragStart}
+                        onDragEnd={handleSortDragEnd}
+                        onDragOver={handleSortDragOver}
+                        onDrop={handleSortDrop}
+                      />
+                    ))}
+                  </ul>
+                ))}
+              </div>
+            )}
+          </main>
+        </>
+      ) : (
+        <TrashView
+          notes={trashed}
+          onBack={() => setView("home")}
+          onRestore={(id) => void handleRestore(id)}
+          onDeleteForever={(id) => void handleDeleteForever(id)}
+          onEmptyTrash={() => void handleEmptyTrash()}
+        />
+      )}
+
+      {modal && (modal.mode === "new" || editingNote) && (
+        <NoteModal
+          mode={modal.mode}
+          type={modal.mode === "new" ? modal.type : (editingNote as Note).type}
+          note={editingNote}
+          onClose={() => setModal(null)}
+          onSaved={handleSaved}
+          onTrashed={handleTrashed}
+          onToast={showToast}
+        />
+      )}
+
+      {toast && (
+        <div
+          role="status"
+          className="animate-pop fixed bottom-6 left-1/2 z-[60] -translate-x-1/2 rounded-full bg-ink px-4 py-2 text-[12.5px] text-paper shadow-[0_16px_40px_-16px_rgba(27,26,22,0.7)]"
+        >
+          {toast}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Splash() {
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-paper">
+      <div data-tauri-drag-region className="h-10 shrink-0" aria-hidden="true" />
+      <div className="absolute right-2 top-1">
+        <WindowControls />
+      </div>
+      <div className="grid flex-1 place-items-center">
+        <div className="animate-fade flex flex-col items-center gap-4">
+          <Logo className="size-12 rounded-2xl" />
+          <p className="text-[14px] font-semibold tracking-tight">Maybe Todo</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ListSkeleton({ columnCount }: { columnCount: number }) {
+  const heights = [136, 104, 120, 96];
+  const columns = Array.from({ length: columnCount }, (_, columnIndex) =>
+    Array.from(
+      { length: columnIndex % 2 === 0 ? 3 : 2 },
+      (_, row) => heights[(columnIndex + row) % heights.length],
+    ),
+  );
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
-      <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-        <div className="bg-dots absolute inset-x-0 top-0 h-[560px]" />
-        <div className="absolute -left-40 -top-40 size-[520px] rounded-full bg-accent/[0.07] blur-3xl" />
-        <div className="absolute -right-32 top-24 size-[420px] rounded-full bg-leaf/[0.06] blur-3xl" />
-      </div>
-
-      <div className="relative mx-auto flex min-h-screen max-w-6xl flex-col px-6 lg:px-10">
-        <header className="flex h-16 items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Logo />
-            <div className="leading-tight">
-              <p className="text-[15px] font-semibold tracking-tight">
-                Maybe Todo
-              </p>
-              <p className="text-[11px] text-muted">v0.1.0 · 预览</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 rounded-full border border-line bg-card/70 px-3 py-1.5 text-[12px] text-muted backdrop-blur">
-            <span
-              className={`size-1.5 rounded-full ${inTauri ? "bg-leaf" : "bg-accent"}`}
+    <div className="flex items-start gap-3" aria-hidden="true">
+      {columns.map((columnHeights, index) => (
+        <div key={index} className="flex min-w-0 flex-1 flex-col gap-3">
+          {columnHeights.map((height, row) => (
+            <div
+              key={row}
+              style={{ height }}
+              className="animate-pulse rounded-2xl border border-sticky-edge/60 bg-sticky/50"
             />
-            {inTauri ? "Tauri 桌面端" : "浏览器预览"}
-          </div>
-        </header>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
 
-        <main className="grid flex-1 items-start gap-10 py-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:gap-14 lg:py-10">
-          <section className="animate-rise">
-            <p className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted">
-              <span className="h-px w-6 bg-line" />
-              本地优先 · 无账号 · 打开就写
-            </p>
+function ErrorState({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="mx-auto mt-10 max-w-xl rounded-3xl border border-line bg-card/70 px-6 py-12 text-center">
+      <p className="text-[15px] font-medium">便签读取失败</p>
+      <p className="mx-auto mt-2 max-w-md break-words text-[12.5px] leading-6 text-muted">
+        {message}
+      </p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-5 cursor-pointer rounded-xl bg-ink px-4 py-2 text-[13px] font-medium text-paper transition hover:bg-ink/85"
+      >
+        重试
+      </button>
+    </div>
+  );
+}
 
-            <h1 className="mt-5 text-[clamp(2.6rem,5.4vw,3.75rem)] font-semibold leading-[1.03] tracking-[-0.045em]">
-              先记下来,
-              <br />
-              <span className="text-muted">再决定。</span>
-            </h1>
-
-            <p className="mt-5 max-w-md text-[14.5px] leading-7 text-muted">
-              Maybe Todo 是一个很轻的便签与待办工具。想到什么先扔进来,
-              做完的勾掉,不确定的就先留着——反正它不会催你。
-            </p>
-
-            <form
-              onSubmit={submit}
-              className="mt-6 flex items-center gap-2 rounded-2xl border border-line bg-card p-2 pl-4 shadow-[0_18px_40px_-28px_rgba(27,26,22,0.45)] transition focus-within:border-accent/50 focus-within:ring-4 focus-within:ring-accent/10"
-            >
-              <svg
-                viewBox="0 0 16 16"
-                className="size-4 shrink-0 text-accent"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M11.5 2.5 13.5 4.5 6 12H4v-2z" />
-              </svg>
-              <input
-                ref={inputRef}
-                value={draft}
-                onChange={(event) => setDraft(event.currentTarget.value)}
-                placeholder="现在脑子里有什么?"
-                aria-label="记一条"
-                className="min-w-0 flex-1 bg-transparent py-2 text-[14px] outline-none placeholder:text-muted/60"
-              />
-              <kbd className="mr-1 hidden rounded-md border border-line bg-paper px-1.5 py-0.5 text-[10px] text-muted sm:block">
-                ↵
-              </kbd>
-              <button
-                type="submit"
-                className="rounded-xl bg-ink px-4 py-2 text-[13px] font-medium text-paper transition hover:bg-ink/85 active:scale-[0.98]"
-              >
-                记下
-              </button>
-            </form>
-
-            <div className="mt-5 flex items-center justify-between text-[12px] text-muted">
-              <span>{openCount > 0 ? `${openCount} 件待定` : "都处理完了"}</span>
-              <span>{notes.length} 条记录</span>
-            </div>
-
-            {notes.length === 0 ? (
-              <p className="mt-2 rounded-2xl border border-dashed border-line px-4 py-8 text-center text-[13px] text-muted">
-                还没有一条记录 —— 在上面写点什么试试。
-              </p>
-            ) : (
-              <ul className="mt-1 max-h-[196px] space-y-0.5 overflow-y-auto pr-1">
-                {notes.map((note) => (
-                  <li
-                    key={note.id}
-                    className="group flex items-start gap-3 rounded-xl px-3 py-2.5 transition hover:bg-card/80"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => toggle(note.id)}
-                      aria-label={note.done ? "标记为未完成" : "标记为完成"}
-                      className={`mt-0.5 grid size-[18px] shrink-0 place-items-center rounded-[6px] border transition ${
-                        note.done
-                          ? "border-leaf bg-leaf text-paper"
-                          : "border-line bg-card text-transparent hover:border-leaf/60"
-                      }`}
-                    >
-                      <svg
-                        viewBox="0 0 12 12"
-                        className="size-2.5"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M2.2 6.4 4.8 9 9.8 3.4" />
-                      </svg>
-                    </button>
-
-                    <span
-                      className={`min-w-0 flex-1 pt-px text-[14px] leading-6 ${
-                        note.done
-                          ? "text-muted line-through decoration-line"
-                          : ""
-                      }`}
-                    >
-                      {note.text}
-                    </span>
-
-                    <button
-                      type="button"
-                      onClick={() => remove(note.id)}
-                      aria-label="删除这条"
-                      className="mt-1 shrink-0 text-muted/50 opacity-0 transition hover:text-accent group-hover:opacity-100"
-                    >
-                      <svg
-                        viewBox="0 0 12 12"
-                        className="size-3"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.4"
-                        strokeLinecap="round"
-                      >
-                        <path d="M3 3l6 6M9 3 3 9" />
-                      </svg>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          <aside className="animate-rise [animation-delay:120ms] lg:pt-4">
-            <StatusCard />
-          </aside>
-        </main>
-
-        <FeatureGrid />
-
-        <footer className="flex flex-col gap-1.5 border-t border-line/80 py-5 text-[12px] text-muted sm:flex-row sm:items-center sm:justify-between">
-          <p>React 19 · TypeScript · Vite · Tauri 2 · Tailwind CSS 4</p>
-          <p>下一步:接入 SQLite 持久化与多端同步 →</p>
-        </footer>
+function EmptyHome({
+  onNew,
+}: {
+  onNew: (type: NoteType) => void;
+}) {
+  return (
+    <div className="mx-auto mt-16 max-w-xl rounded-3xl border border-dashed border-line px-6 py-14 text-center">
+      <p className="text-[14px] font-medium">先记下来，再决定</p>
+      <p className="mt-1 text-[12.5px] text-muted">
+        还没有一条便签。新建一条，从一句话开始。
+      </p>
+      <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+        <button
+          type="button"
+          onClick={() => onNew("text")}
+          className="cursor-pointer rounded-xl bg-ink px-4 py-2 text-[13px] font-medium text-paper transition hover:bg-ink/85"
+        >
+          新建笔记
+        </button>
+        <button
+          type="button"
+          onClick={() => onNew("todo")}
+          className="cursor-pointer rounded-xl border border-line bg-card px-4 py-2 text-[13px] text-ink/75 transition hover:border-accent/40 hover:text-ink"
+        >
+          新建待办
+        </button>
       </div>
     </div>
   );

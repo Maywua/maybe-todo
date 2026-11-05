@@ -1,11 +1,13 @@
 @echo off
-REM 启动桌面端(Tauri + Vite)。
-REM 本机的 WebView2 无法在 %LOCALAPPDATA% / %TEMP% 下创建用户数据目录
-REM (表现为 "Failed to setup app: 拒绝访问" 或 0x800700AA),
-REM 因此把 WEBVIEW2_USER_DATA_FOLDER 指到工作区内的 .webview-data。
-REM 普通开发机上可以忽略此脚本,直接用 npm run desktop。
-
+rem Launch the desktop app (Tauri + Vite).
+rem DSH's process sandbox can only write inside the workspace, so keep the
+rem WebView profile and the note store in repo-local folders for development.
 set "ROOT=%~dp0.."
+pushd "%ROOT%" || exit /b 1
+set "ROOT=%CD%"
+popd
+set "MAYBE_TODO_DATA_DIR=%ROOT%\.appdata"
+set "MAYBE_TODO_WEBVIEW_DIR=%ROOT%\.webview-data"
 set "WEBVIEW2_USER_DATA_FOLDER=%ROOT%\.webview-data"
 cd /d "%ROOT%"
 call npm run desktop

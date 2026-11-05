@@ -1,7 +1,11 @@
-export default function Logo({ className = "" }: { className?: string }) {
+export default function Logo({
+  className = "size-9 rounded-[11px]",
+}: {
+  className?: string;
+}) {
   return (
     <span
-      className={`relative grid size-9 place-items-center rounded-[11px] bg-ink text-paper shadow-sm ${className}`}
+      className={`relative grid place-items-center bg-ink text-paper shadow-sm ${className}`}
     >
       <span className="font-display -translate-y-px text-[20px] italic leading-none">
         m
