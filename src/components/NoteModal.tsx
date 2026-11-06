@@ -12,10 +12,11 @@ import {
 import {
   cutGraphemes,
   formatClock,
-  formatDateTime,
+  formatRelativeTime,
   graphemeLength,
 } from "../lib/format";
 import { emptyContent, type Note, type NoteType } from "../types";
+import type { PanelStyle } from "../lib/settings";
 import { CloseIcon, LockIcon, MenuIcon } from "./icons";
 import MenuPanel from "./MenuPanel";
 
@@ -25,6 +26,7 @@ interface Props {
   mode: "new" | "edit";
   type: NoteType;
   note: Note | null;
+  panelStyle?: PanelStyle;
   onClose: () => void;
   onSaved: (note: Note, created: boolean) => void;
   onTrashed: (id: string) => void;
@@ -35,6 +37,7 @@ export default function NoteModal({
   mode,
   type,
   note,
+  panelStyle = "card",
   onClose,
   onSaved,
   onTrashed,
@@ -171,7 +174,8 @@ export default function NoteModal({
     const target = savedRef.current;
     if (!target) return;
     try {
-      const updated = await persistLocked(target.id, !locked);
+      const lockedSummary = await persistLocked(target.id, !locked);
+      const updated: Note = { ...target, isLocked: lockedSummary.isLocked };
       savedRef.current = updated;
       setSavedNote(updated);
       setLocked(!locked);
@@ -290,10 +294,33 @@ export default function NoteModal({
 
   const count = graphemeLength(title);
   const showMenu = savedNote !== null;
+  const isCard = panelStyle === "card";
+  const isDrawer = panelStyle === "drawer";
+  const overlayPosition = isCard
+    ? "items-end justify-center p-0"
+    : isDrawer
+      ? "items-stretch justify-end p-0"
+      : "items-center justify-center p-4";
+  const dialogShape = isCard
+    ? "max-h-[80vh] w-full max-w-[640px] rounded-t-3xl border-b-0"
+    : isDrawer
+      ? "h-full max-h-none w-full max-w-[640px] rounded-l-3xl border-r-0"
+      : "max-h-[80vh] w-full max-w-[640px] rounded-3xl";
+  const dialogAnimation = closing
+    ? isCard
+      ? "animate-sheet-out"
+      : isDrawer
+        ? "animate-drawer-out"
+        : "animate-window-fade-out"
+    : isCard
+      ? "animate-sheet-in"
+      : isDrawer
+        ? "animate-drawer-in"
+        : "animate-window-fade-in";
 
   return (
     <div
-      className={`fixed inset-0 z-40 flex items-center justify-center bg-ink/25 p-4 ${
+      className={`fixed inset-0 z-40 flex bg-ink/25 ${overlayPosition} ${
         closing ? "animate-fade-out pointer-events-none" : "animate-fade"
       }`}
       onMouseDown={(event) => {
@@ -307,9 +334,7 @@ export default function NoteModal({
         aria-label={mode === "new" ? "新建便签" : "编辑便签"}
         tabIndex={-1}
         onKeyDown={handleDialogKeyDown}
-        className={`flex max-h-[80vh] w-full max-w-[640px] flex-col overflow-hidden rounded-3xl border border-line bg-card shadow-[0_30px_80px_-30px_rgba(27,26,22,0.6)] ${
-          closing ? "animate-modal-out" : "animate-modal-in"
-        }`}
+        className={`flex flex-col overflow-hidden border border-line bg-card shadow-[0_30px_80px_-30px_rgba(27,26,22,0.6)] ${dialogShape} ${dialogAnimation}`}
       >
         <div className="flex h-12 shrink-0 items-center justify-between px-3">
           {showMenu ? (
@@ -395,8 +420,8 @@ export default function NoteModal({
                   </div>
                   {savedNote && (
                     <>
-                      <div>创建于 {formatDateTime(savedNote.createdAt)}</div>
-                      <div>修改于 {formatDateTime(savedNote.updatedAt)}</div>
+                      <div>创建于 {formatRelativeTime(savedNote.createdAt)}</div>
+                      <div>修改于 {formatRelativeTime(savedNote.updatedAt)}</div>
                     </>
                   )}
                 </div>

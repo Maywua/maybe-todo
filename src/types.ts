@@ -1,5 +1,5 @@
 export type NoteType = "text" | "todo";
-export type View = "home" | "trash";
+export type View = "home" | "trash" | "settings";
 
 export interface TodoItem {
   id: string;
@@ -15,17 +15,27 @@ export interface NoteContent {
   items?: TodoItem[];
 }
 
-export interface Note {
+export interface NoteSummary {
   id: string;
   type: NoteType;
   title: string;
-  content: NoteContent;
+  summary: string;
   order: number;
   createdAt: number;
   updatedAt: number;
   trashedAt: number | null;
   completedAt: number | null;
   isLocked: boolean;
+}
+
+export interface Note extends NoteSummary {
+  content: NoteContent;
+}
+
+export interface NotePage {
+  items: NoteSummary[];
+  nextCursor: string | null;
+  hasMore: boolean;
 }
 
 export function emptyContent(type: NoteType): NoteContent {

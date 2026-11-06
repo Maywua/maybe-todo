@@ -1,3 +1,4 @@
+import { inTauri } from "../lib/runtime";
 import WindowControls from "./WindowControls";
 
 interface Props {
@@ -8,8 +9,14 @@ interface Props {
 
 export default function SortHeader({ saving, onCancel, onSave }: Props) {
   return (
-    <header className="sticky top-0 z-30 border-b border-line/70 bg-paper">
-      <div className="mx-auto flex h-14 max-w-5xl items-center gap-1 px-4">
+    <header className="sticky top-0 z-30 shrink-0 border-b border-line/70 bg-paper">
+      <div
+        className={
+          inTauri
+            ? "flex h-14 w-full items-center gap-1"
+            : "mx-auto flex h-14 max-w-5xl items-center gap-1 px-4"
+        }
+      >
         <button
           type="button"
           onClick={onCancel}

@@ -68,6 +68,14 @@
     animation: pop 0.16s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
+  .animate-toast-in {
+    animation: toast-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .animate-toast-out {
+    animation: toast-out 0.16s cubic-bezier(0.4, 0, 1, 1) both;
+  }
+
   .animate-modal-out {
     animation: modal-out 0.16s cubic-bezier(0.4, 0, 0.2, 1) both;
   }
@@ -76,8 +84,51 @@
     animation: modal-in 0.16s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
+  .animate-sheet-in {
+    animation: sheet-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .animate-sheet-out {
+    animation: sheet-out 0.18s cubic-bezier(0.4, 0, 1, 1) both;
+  }
+
+  .animate-drawer-in {
+    animation: drawer-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .animate-drawer-out {
+    animation: drawer-out 0.18s cubic-bezier(0.4, 0, 1, 1) both;
+  }
+
+  .animate-window-fade-in {
+    animation: window-fade-in 0.16s ease-out both;
+  }
+
+  .animate-window-fade-out {
+    animation: window-fade-out 0.16s ease-in both;
+  }
+
   .animate-list-in {
     animation: list-in 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .app-scroll::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .app-scroll::-webkit-scrollbar-track {
+    background: #f6f2e9;
+  }
+
+  .app-scroll::-webkit-scrollbar-thumb {
+    background: #d6cab6;
+    border: 2px solid #f6f2e9;
+    border-radius: 999px;
+  }
+
+  .app-scroll::-webkit-scrollbar-thumb:hover {
+    background: #bda98d;
   }
 
   .menu-panel {
@@ -159,6 +210,60 @@
   }
 }
 
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes sheet-out {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes drawer-out {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes window-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes window-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 @keyframes list-in {
   from {
     opacity: 0;
@@ -181,13 +286,43 @@
   }
 }
 
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-rise,
   .animate-fade,
   .animate-fade-out,
   .animate-pop,
+  .animate-toast-in,
+  .animate-toast-out,
   .animate-modal-out,
   .animate-modal-in,
+  .animate-sheet-in,
+  .animate-sheet-out,
+  .animate-drawer-in,
+  .animate-drawer-out,
+  .animate-window-fade-in,
+  .animate-window-fade-out,
   .animate-list-in {
     animation: none;
   }

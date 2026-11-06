@@ -1,13 +1,19 @@
-import { useState } from "react";
-import type { Note } from "../types";
+import { useEffect, useRef, useState } from "react";
+import type { NoteSummary } from "../types";
 import { daysUntilPurge, formatDateTime } from "../lib/format";
-import { previewOf } from "../lib/preview";
+import { inTauri } from "../lib/runtime";
 import { ArrowLeftIcon, LockIcon } from "./icons";
 import ConfirmDialog from "./ConfirmDialog";
 import WindowControls from "./WindowControls";
 
 interface Props {
-  notes: Note[];
+  notes: NoteSummary[];
+  loading: boolean;
+  loadingMore: boolean;
+  hasMore: boolean;
+  error: string | null;
+  onLoadMore: () => void;
+  onRetry: () => void;
   onBack: () => void;
   onRestore: (id: string) => void;
   onDeleteForever: (id: string) => void;
@@ -23,14 +29,35 @@ interface Confirmation {
 
 export default function TrashView({
   notes,
+  loading,
+  loadingMore,
+  hasMore,
+  error,
+  onLoadMore,
+  onRetry,
   onBack,
   onRestore,
   onDeleteForever,
   onEmptyTrash,
 }: Props) {
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  const askDelete = (note: Note) => {
+  useEffect(() => {
+    if (loading || loadingMore || !hasMore || error) return;
+    const node = sentinelRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) onLoadMore();
+      },
+      { rootMargin: "400px 0px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [error, hasMore, loading, loadingMore, notes.length, onLoadMore]);
+
+  const askDelete = (note: NoteSummary) => {
     setConfirmation({
       title: "彻底删除这条便签？",
       body: `「${note.title.trim() || "未命名"}」将被永久删除，无法恢复。`,
@@ -42,16 +69,22 @@ export default function TrashView({
   const askEmpty = () => {
     setConfirmation({
       title: "清空回收站？",
-      body: `共 ${notes.length} 条便签将被永久删除，无法恢复。`,
+      body: "回收站中的便签将被永久删除，无法恢复。",
       confirmLabel: "清空回收站",
       action: onEmptyTrash,
     });
   };
 
   return (
-    <div className="min-h-screen">
-      <header className="sticky top-0 z-30 border-b border-line/70 bg-paper">
-        <div className="mx-auto flex h-14 max-w-5xl items-center gap-1 px-4">
+    <div className="flex h-screen flex-col overflow-hidden">
+      <header className="sticky top-0 z-30 shrink-0 border-b border-line/70 bg-paper">
+        <div
+          className={
+            inTauri
+              ? "flex h-14 w-full items-center gap-1"
+              : "mx-auto flex h-14 max-w-5xl items-center gap-1 px-4"
+          }
+        >
           <button
             type="button"
             aria-label="返回首页"
@@ -80,8 +113,32 @@ export default function TrashView({
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-[760px] px-4 pb-24 pt-6">
-        {notes.length === 0 ? (
+      <main className="app-scroll min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-[760px] px-4 pb-24 pt-6">
+        {loading && notes.length === 0 ? (
+          <div className="flex flex-col gap-2" aria-hidden="true">
+            {Array.from({ length: 3 }, (_, index) => (
+              <div
+                key={index}
+                className="h-[82px] animate-pulse rounded-2xl border border-line bg-card/50"
+              />
+            ))}
+          </div>
+        ) : error && notes.length === 0 ? (
+          <div className="mx-auto mt-16 max-w-sm rounded-2xl border border-line bg-card/70 px-6 py-10 text-center">
+            <p className="text-[14px] font-medium">回收站读取失败</p>
+            <p className="mt-2 break-words text-[12.5px] leading-6 text-muted">
+              {error}
+            </p>
+            <button
+              type="button"
+              onClick={onRetry}
+              className="mt-4 cursor-pointer rounded-xl bg-ink px-4 py-2 text-[13px] font-medium text-paper transition hover:bg-ink/85"
+            >
+              重试
+            </button>
+          </div>
+        ) : notes.length === 0 ? (
           <div className="mt-16 flex flex-col items-center text-center">
             <div className="grid size-12 place-items-center rounded-2xl bg-sticky text-ink/40">
               <ArrowLeftIcon className="size-5" />
@@ -102,6 +159,7 @@ export default function TrashView({
           <ul className="flex flex-col gap-2">
             {notes.map((note) => {
               const trashedAt = note.trashedAt ?? Date.now();
+              const preview = (note.summary.split("\n")[0] ?? "").trim();
               return (
                 <li
                   key={note.id}
@@ -116,7 +174,7 @@ export default function TrashView({
                         )}
                       </p>
                       <p className="mt-1 line-clamp-1 text-[12.5px] text-muted">
-                        {previewOf(note) || "（空内容）"}
+                        {preview || "（空内容）"}
                       </p>
                       <p className="mt-1 text-[11px] text-muted/70">
                         删除于 {formatDateTime(trashedAt)} ·{" "}
@@ -145,6 +203,26 @@ export default function TrashView({
             })}
           </ul>
         )}
+
+        {!loading && (hasMore || error) && notes.length > 0 && (
+          <div
+            ref={sentinelRef}
+            className="flex h-12 items-center justify-center text-[12px] text-muted"
+          >
+            {error ? (
+              <button
+                type="button"
+                onClick={onRetry}
+                className="cursor-pointer text-accent underline-offset-2 hover:underline"
+              >
+                {error}
+              </button>
+            ) : loadingMore ? (
+              "加载中…"
+            ) : null}
+          </div>
+        )}
+        </div>
       </main>
 
       {confirmation && (

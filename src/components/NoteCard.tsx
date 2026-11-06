@@ -1,10 +1,9 @@
 import type { DragEvent as ReactDragEvent } from "react";
-import type { Note } from "../types";
-import { contentOf } from "../lib/preview";
+import type { NoteSummary } from "../types";
 import { GripIcon } from "./icons";
 
 interface Props {
-  note: Note;
+  note: NoteSummary;
   sorting: boolean;
   dragging: boolean;
   dropEdge: "before" | "after" | null;
@@ -27,7 +26,7 @@ export default function NoteCard({
   onDrop,
 }: Props) {
   const title = note.title.trim() || "未命名";
-  const content = contentOf(note);
+  const content = note.summary.trim();
 
   const handleDragStart = (event: ReactDragEvent<HTMLButtonElement>) => {
     if (!sorting) return;
@@ -93,7 +92,7 @@ export default function NoteCard({
         >
           {title}
         </span>
-        <span className="mt-2 line-clamp-8 block min-h-[40px] whitespace-pre-line text-[13px] leading-6 text-ink/60">
+        <span className="mt-2 line-clamp-5 block min-h-[40px] whitespace-pre-line text-[13px] leading-6 text-ink/60">
           {content}
         </span>
       </button>

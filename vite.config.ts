@@ -24,7 +24,15 @@ export default defineConfig(() => ({
         }
       : undefined,
     watch: {
-      ignored: ["**/src-tauri/**"],
+      ignored: [
+        "**/src-tauri/**",
+        "**/dist/**",
+        "**/target/**",
+        "**/.appdata/**",
+        "**/.appdata-pagination/**",
+        "**/.webview-data/**",
+        "**/.edge-test/**",
+      ],
     },
   },
 }));

@@ -3,7 +3,9 @@ import type { AnimationEvent as ReactAnimationEvent } from "react";
 import HomeHeader from "./components/HomeHeader";
 import NoteCard from "./components/NoteCard";
 import NoteModal from "./components/NoteModal";
+import SettingsView from "./components/SettingsView";
 import SortHeader from "./components/SortHeader";
+import Toast from "./components/Toast";
 import TrashView from "./components/TrashView";
 import WindowControls from "./components/WindowControls";
 import Logo from "./components/Logo";
@@ -11,23 +13,40 @@ import { useColumnCount } from "./hooks/useColumnCount";
 import {
   deleteNoteForever,
   emptyTrash,
-  listNotes,
-  listTrashed,
+  getNote,
+  listAllSummaries,
+  listSummaries,
+  listTrashedSummaries,
   purgeExpired,
   quitApp,
   reorderNotes,
   restoreNote,
+  toSummary,
 } from "./lib/repo";
-import type { Note, NoteType, View } from "./types";
+import { loadSettings, saveSettings, type Settings } from "./lib/settings";
+import type { Note, NoteSummary, NoteType, View } from "./types";
 
 type ModalState =
   | { mode: "new"; type: NoteType }
   | { mode: "edit"; id: string };
 
-const sortNotes = (notes: Note[]) =>
-  [...notes].sort(
-    (left, right) => left.order - right.order || left.createdAt - right.createdAt,
-  );
+const byOrder = (left: NoteSummary, right: NoteSummary) =>
+  left.order - right.order || left.createdAt - right.createdAt;
+
+const mergeSummaries = (
+  current: NoteSummary[],
+  incoming: NoteSummary[],
+): NoteSummary[] => {
+  const seen = new Set(current.map((note) => note.id));
+  const next = [...current];
+  for (const note of incoming) {
+    if (!seen.has(note.id)) {
+      seen.add(note.id);
+      next.push(note);
+    }
+  }
+  return next;
+};
 
 let listHasAnimated = false;
 
@@ -35,15 +54,25 @@ export default function App() {
   const [booted, setBooted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [trashed, setTrashed] = useState<Note[]>([]);
+  const [summaries, setSummaries] = useState<NoteSummary[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [pageError, setPageError] = useState<string | null>(null);
+  const [trashed, setTrashed] = useState<NoteSummary[]>([]);
+  const [trashCursor, setTrashCursor] = useState<string | null>(null);
+  const [trashHasMore, setTrashHasMore] = useState(false);
+  const [trashLoading, setTrashLoading] = useState(false);
+  const [trashLoadingMore, setTrashLoadingMore] = useState(false);
+  const [trashError, setTrashError] = useState<string | null>(null);
   const [view, setView] = useState<View>("home");
   const [modal, setModal] = useState<ModalState | null>(null);
+  const [modalNote, setModalNote] = useState<Note | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [settings, setSettings] = useState<Settings>(loadSettings);
   const [animateList, setAnimateList] = useState(() => !listHasAnimated);
-  const [sorting, setSorting] = useState(false);
+  const [sortItems, setSortItems] = useState<NoteSummary[] | null>(null);
   const [sortSaving, setSortSaving] = useState(false);
-  const [sortSnapshot, setSortSnapshot] = useState<Note[] | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<{
     id: string;
@@ -51,6 +80,8 @@ export default function App() {
   } | null>(null);
 
   const toastTimer = useRef<number | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const pageSize = settings.pageSize;
 
   const showToast = useCallback((message: string) => {
     setToast(message);
@@ -68,27 +99,26 @@ export default function App() {
     [],
   );
 
-  const load = useCallback(async () => {
+  const loadFirstPage = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setPageError(null);
     try {
       await purgeExpired();
-      const [nextNotes, nextTrashed] = await Promise.all([
-        listNotes(),
-        listTrashed(),
-      ]);
-      setNotes(nextNotes);
-      setTrashed(nextTrashed);
+      const page = await listSummaries(null, pageSize);
+      setSummaries(page.items);
+      setNextCursor(page.nextCursor);
+      setHasMore(page.hasMore);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [pageSize]);
 
   useEffect(() => {
     let alive = true;
-    void load();
+    void loadFirstPage();
     const timers = [
       window.setTimeout(() => {
         if (alive) setBooted(true);
@@ -101,64 +131,154 @@ export default function App() {
       alive = false;
       timers.forEach((timer) => window.clearTimeout(timer));
     };
-  }, [load]);
+  }, [loadFirstPage]);
+
+  const loadMore = useCallback(async () => {
+    if (loading || loadingMore || !hasMore || !nextCursor) return;
+    setLoadingMore(true);
+    setPageError(null);
+    try {
+      const page = await listSummaries(nextCursor, pageSize);
+      setSummaries((previous) => mergeSummaries(previous, page.items));
+      setNextCursor(page.nextCursor);
+      setHasMore(page.hasMore);
+    } catch {
+      setPageError("加载更多失败，点击重试");
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [hasMore, loading, loadingMore, nextCursor, pageSize]);
+
+  const sorting = sortItems !== null;
+
+  useEffect(() => {
+    if (sorting || loading || !hasMore || pageError) return;
+    const node = sentinelRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) void loadMore();
+      },
+      { rootMargin: "0px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasMore, loadMore, loading, pageError, sorting, summaries.length]);
+
+  const loadTrash = useCallback(
+    async (reset: boolean) => {
+      if (reset) {
+        setTrashLoading(true);
+        setTrashError(null);
+      } else {
+        if (trashLoadingMore || trashLoading || !trashHasMore || !trashCursor) {
+          return;
+        }
+        setTrashLoadingMore(true);
+      }
+      try {
+        const page = await listTrashedSummaries(
+          reset ? null : trashCursor,
+          pageSize,
+        );
+        setTrashed((previous) =>
+          reset ? page.items : mergeSummaries(previous, page.items),
+        );
+        setTrashCursor(page.nextCursor);
+        setTrashHasMore(page.hasMore);
+      } catch {
+        setTrashError("回收站加载失败，点击重试");
+      } finally {
+        if (reset) setTrashLoading(false);
+        else setTrashLoadingMore(false);
+      }
+    },
+    [pageSize, trashCursor, trashHasMore, trashLoading, trashLoadingMore],
+  );
+
+  const openTrash = useCallback(() => {
+    setView("trash");
+    void loadTrash(true);
+  }, [loadTrash]);
+
+  const loadMoreTrash = useCallback(() => {
+    void loadTrash(false);
+  }, [loadTrash]);
 
   const handleSaved = useCallback((saved: Note) => {
-    setNotes((previous) => {
-      const exists = previous.some((note) => note.id === saved.id);
-      const next = exists
-        ? previous.map((note) => (note.id === saved.id ? saved : note))
-        : [...previous, saved];
-      return sortNotes(next);
+    const summary = toSummary(saved);
+    setSummaries((previous) => {
+      const exists = previous.some((note) => note.id === summary.id);
+      if (exists) {
+        return previous.map((note) =>
+          note.id === summary.id ? summary : note,
+        );
+      }
+      return [summary, ...previous];
     });
   }, []);
 
   const handleTrashed = useCallback(
     (id: string) => {
-      setNotes((previous) => previous.filter((note) => note.id !== id));
+      const remaining = summaries.filter((note) => note.id !== id);
+      setSummaries(remaining);
+      if (id === nextCursor) {
+        setNextCursor(remaining[remaining.length - 1]?.id ?? null);
+        if (remaining.length === 0) void loadFirstPage();
+      }
       setModal(null);
+      setModalNote(null);
       showToast("已移入回收站");
-      void listTrashed().then(setTrashed).catch(() => undefined);
     },
-    [showToast],
+    [loadFirstPage, nextCursor, showToast, summaries],
   );
 
   const handleRestore = useCallback(
     async (id: string) => {
       try {
         const restored = await restoreNote(id);
-        setTrashed((previous) => previous.filter((note) => note.id !== id));
-        setNotes((previous) =>
-          sortNotes([
-            ...previous.filter((note) => note.id !== restored.id),
-            restored,
-          ]),
-        );
+        const remaining = trashed.filter((note) => note.id !== id);
+        setTrashed(remaining);
+        if (id === trashCursor) {
+          setTrashCursor(remaining[remaining.length - 1]?.id ?? null);
+        }
+        setSummaries((previous) => {
+          if (previous.some((note) => note.id === restored.id)) {
+            return previous;
+          }
+          return [...previous, restored].sort(byOrder);
+        });
         showToast("已恢复");
       } catch {
         showToast("恢复失败，请重试");
       }
     },
-    [showToast],
+    [showToast, trashCursor, trashed],
   );
 
   const handleDeleteForever = useCallback(
     async (id: string) => {
       try {
         await deleteNoteForever(id);
-        setTrashed((previous) => previous.filter((note) => note.id !== id));
+        const remaining = trashed.filter((note) => note.id !== id);
+        setTrashed(remaining);
+        if (id === trashCursor) {
+          setTrashCursor(remaining[remaining.length - 1]?.id ?? null);
+        }
         showToast("已彻底删除");
       } catch {
         showToast("删除失败，请重试");
       }
     },
-    [showToast],
+    [showToast, trashCursor, trashed],
   );
 
   const handleEmptyTrash = useCallback(async () => {
     try {
       await emptyTrash();
       setTrashed([]);
+      setTrashHasMore(false);
+      setTrashCursor(null);
       showToast("回收站已清空");
     } catch {
       showToast("清空失败，请重试");
@@ -173,33 +293,49 @@ export default function App() {
     }
   }, [showToast]);
 
-  const startSort = useCallback(() => {
-    if (notes.length < 2) return;
-    setSortSnapshot(notes);
-    setDragId(null);
-    setDropTarget(null);
-    setSorting(true);
-  }, [notes]);
+  const updateSettings = useCallback((next: Settings) => {
+    setSettings(next);
+    saveSettings(next);
+  }, []);
+
+  const openSettings = useCallback(() => {
+    setView("settings");
+  }, []);
+
+  const startSort = useCallback(async () => {
+    if (summaries.length < 2 && !hasMore) return;
+    try {
+      const all = await listAllSummaries();
+      if (all.length < 2) return;
+      setSortItems(all);
+      setDragId(null);
+      setDropTarget(null);
+    } catch {
+      showToast("排序加载失败，请重试");
+    }
+  }, [hasMore, showToast, summaries.length]);
 
   const cancelSort = useCallback(() => {
-    if (sortSnapshot) setNotes(sortSnapshot);
-    setSortSnapshot(null);
-    setSorting(false);
+    setSortItems(null);
     setDragId(null);
     setDropTarget(null);
-  }, [sortSnapshot]);
+  }, []);
 
   const saveSort = useCallback(async () => {
-    if (sortSaving) return;
+    if (!sortItems || sortSaving) return;
     setSortSaving(true);
     try {
-      const ids = notes.map((note) => note.id);
-      await reorderNotes(ids);
-      setNotes((previous) =>
-        previous.map((note, index) => ({ ...note, order: index })),
+      const ordered = sortItems.map((note, index) => ({
+        ...note,
+        order: index,
+      }));
+      await reorderNotes(ordered.map((note) => note.id));
+      setSummaries(ordered.slice(0, pageSize));
+      setNextCursor(
+        ordered.length > pageSize ? ordered[pageSize - 1].id : null,
       );
-      setSortSnapshot(null);
-      setSorting(false);
+      setHasMore(ordered.length > pageSize);
+      setSortItems(null);
       setDragId(null);
       setDropTarget(null);
       showToast("排序已保存");
@@ -208,7 +344,7 @@ export default function App() {
     } finally {
       setSortSaving(false);
     }
-  }, [notes, showToast, sortSaving]);
+  }, [pageSize, showToast, sortItems, sortSaving]);
 
   const handleSortDragStart = useCallback(
     (id: string) => {
@@ -221,18 +357,18 @@ export default function App() {
 
   const handleSortDragOver = useCallback(
     (id: string, edge: "before" | "after") => {
-      if (!sorting || sortSaving || !dragId || dragId === id) return;
+      if (!sortItems || sortSaving || !dragId || dragId === id) return;
       setDropTarget((current) =>
         current?.id === id && current.edge === edge
           ? current
           : { id, edge },
       );
     },
-    [dragId, sortSaving, sorting],
+    [dragId, sortItems, sortSaving],
   );
 
   const handleSortDrop = useCallback(() => {
-    if (!sorting || sortSaving || !dragId || !dropTarget) {
+    if (!sortItems || sortSaving || !dragId || !dropTarget) {
       setDragId(null);
       setDropTarget(null);
       return;
@@ -242,7 +378,7 @@ export default function App() {
       setDropTarget(null);
       return;
     }
-    const ids = notes.map((note) => note.id);
+    const ids = sortItems.map((note) => note.id);
     const from = ids.indexOf(dragId);
     if (from === -1) {
       setDragId(null);
@@ -258,11 +394,11 @@ export default function App() {
     }
     if (dropTarget.edge === "after") insertAt += 1;
     ids.splice(insertAt, 0, moved);
-    const byId = new Map(notes.map((note) => [note.id, note]));
-    setNotes(ids.map((id) => byId.get(id) as Note));
+    const byId = new Map(sortItems.map((note) => [note.id, note]));
+    setSortItems(ids.map((id) => byId.get(id) as NoteSummary));
     setDragId(null);
     setDropTarget(null);
-  }, [dragId, dropTarget, notes, sortSaving, sorting]);
+  }, [dragId, dropTarget, sortItems, sortSaving]);
 
   const handleSortDragEnd = useCallback(() => {
     setDragId(null);
@@ -270,26 +406,30 @@ export default function App() {
   }, []);
 
   const openNew = useCallback((type: NoteType) => {
+    setModalNote(null);
     setModal({ mode: "new", type });
   }, []);
 
-  const openEdit = useCallback((id: string) => {
-    setModal({ mode: "edit", id });
-  }, []);
-
-  const editingNote =
-    modal?.mode === "edit"
-      ? (notes.find((note) => note.id === modal.id) ?? null)
-      : null;
+  const openEdit = useCallback(
+    async (id: string) => {
+      try {
+        const note = await getNote(id);
+        setModalNote(note);
+        setModal({ mode: "edit", id });
+      } catch {
+        showToast("便签读取失败，请重试");
+      }
+    },
+    [showToast],
+  );
 
   const columnCount = useColumnCount();
-
-  // 瀑布流：按顺序轮转分配到各列，列内卡片高度各自独立。
-  const columns: Note[][] = Array.from(
+  const displayNotes = sortItems ?? summaries;
+  const columns: NoteSummary[][] = Array.from(
     { length: columnCount },
-    () => [] as Note[],
+    () => [] as NoteSummary[],
   );
-  notes.forEach((note, index) => {
+  displayNotes.forEach((note, index) => {
     columns[index % columnCount].push(note);
   });
 
@@ -302,7 +442,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-paper text-ink">
+    <div className="flex h-screen flex-col overflow-hidden bg-paper text-ink">
       {!booted && <Splash />}
 
       {view === "home" ? (
@@ -316,60 +456,99 @@ export default function App() {
           ) : (
             <HomeHeader
               onNew={openNew}
-              onOpenTrash={() => setView("trash")}
-              onStartSort={startSort}
-              canSort={notes.length >= 2}
+              onOpenTrash={openTrash}
+              onOpenSettings={openSettings}
+              onStartSort={() => void startSort()}
+              canSort={summaries.length >= 2 || hasMore}
               onExit={() => void handleExit()}
               blocked={modal !== null}
             />
           )}
 
-          <main className="mx-auto w-full max-w-5xl px-4 pb-24 pt-8">
+          <main className="app-scroll min-h-0 flex-1 overflow-y-auto">
+            <div className="mx-auto w-full max-w-5xl px-4 pb-24 pt-8">
             {loading ? (
               <ListSkeleton columnCount={columnCount} />
             ) : error ? (
-              <ErrorState message={error} onRetry={() => void load()} />
-            ) : notes.length === 0 ? (
+              <ErrorState message={error} onRetry={() => void loadFirstPage()} />
+            ) : displayNotes.length === 0 ? (
               <EmptyHome onNew={openNew} />
             ) : (
-              <div
-                className={`flex items-start gap-3 ${
-                  booted && animateList ? "animate-list-in" : ""
-                }`}
-                onAnimationEnd={handleListAnimationEnd}
-              >
-                {columns.map((column, columnIndex) => (
-                  <ul
-                    key={columnIndex}
-                    className="flex min-w-0 flex-1 flex-col gap-3"
+              <>
+                <div
+                  className={`flex items-start gap-3 ${
+                    booted && animateList ? "animate-list-in" : ""
+                  }`}
+                  onAnimationEnd={handleListAnimationEnd}
+                >
+                  {columns.map((column, columnIndex) => (
+                    <ul
+                      key={columnIndex}
+                      className="flex min-w-0 flex-1 flex-col gap-3"
+                    >
+                      {column.map((note) => (
+                        <NoteCard
+                          key={note.id}
+                          note={note}
+                          sorting={sorting}
+                          dragging={dragId === note.id}
+                          dropEdge={
+                            dropTarget?.id === note.id
+                              ? dropTarget.edge
+                              : null
+                          }
+                          onOpen={() => void openEdit(note.id)}
+                          onDragStart={handleSortDragStart}
+                          onDragEnd={handleSortDragEnd}
+                          onDragOver={handleSortDragOver}
+                          onDrop={handleSortDrop}
+                        />
+                      ))}
+                    </ul>
+                  ))}
+                </div>
+                {!sorting && (hasMore || pageError) && (
+                  <div
+                    ref={sentinelRef}
+                    className="flex h-8 items-center justify-center"
                   >
-                    {column.map((note) => (
-                      <NoteCard
-                        key={note.id}
-                        note={note}
-                        sorting={sorting}
-                        dragging={dragId === note.id}
-                        dropEdge={
-                          dropTarget?.id === note.id
-                            ? dropTarget.edge
-                            : null
-                        }
-                        onOpen={() => openEdit(note.id)}
-                        onDragStart={handleSortDragStart}
-                        onDragEnd={handleSortDragEnd}
-                        onDragOver={handleSortDragOver}
-                        onDrop={handleSortDrop}
+                    {pageError ? (
+                      <button
+                        type="button"
+                        onClick={() => void loadMore()}
+                        className="cursor-pointer text-[12px] text-accent underline-offset-2 hover:underline"
+                      >
+                        加载失败，点击重试
+                      </button>
+                    ) : loadingMore ? (
+                      <span
+                        aria-label="加载中"
+                        className="size-3.5 animate-spin rounded-full border-2 border-line border-t-accent"
                       />
-                    ))}
-                  </ul>
-                ))}
-              </div>
+                    ) : null}
+                  </div>
+                )}
+              </>
             )}
+            </div>
           </main>
         </>
+      ) : view === "settings" ? (
+        <SettingsView
+          settings={settings}
+          onChange={updateSettings}
+          onToast={showToast}
+          onBack={() => setView("home")}
+        />
       ) : (
         <TrashView
           notes={trashed}
+          loading={trashLoading}
+          loadingMore={trashLoadingMore}
+          hasMore={trashHasMore}
+          error={trashError}
+          onLoadMore={loadMoreTrash}
+          onRetry={() => void loadTrash(true)}
           onBack={() => setView("home")}
           onRestore={(id) => void handleRestore(id)}
           onDeleteForever={(id) => void handleDeleteForever(id)}
@@ -377,26 +556,23 @@ export default function App() {
         />
       )}
 
-      {modal && (modal.mode === "new" || editingNote) && (
+      {modal && (modal.mode === "new" || modalNote) && (
         <NoteModal
           mode={modal.mode}
-          type={modal.mode === "new" ? modal.type : (editingNote as Note).type}
-          note={editingNote}
-          onClose={() => setModal(null)}
+          type={modal.mode === "new" ? modal.type : modalNote!.type}
+          note={modal.mode === "new" ? null : modalNote}
+          panelStyle={settings.panelStyle}
+          onClose={() => {
+            setModal(null);
+            setModalNote(null);
+          }}
           onSaved={handleSaved}
           onTrashed={handleTrashed}
           onToast={showToast}
         />
       )}
 
-      {toast && (
-        <div
-          role="status"
-          className="animate-pop fixed bottom-6 left-1/2 z-[60] -translate-x-1/2 rounded-full bg-ink px-4 py-2 text-[12.5px] text-paper shadow-[0_16px_40px_-16px_rgba(27,26,22,0.7)]"
-        >
-          {toast}
-        </div>
-      )}
+      <Toast message={toast} />
     </div>
   );
 }
@@ -468,11 +644,7 @@ function ErrorState({
   );
 }
 
-function EmptyHome({
-  onNew,
-}: {
-  onNew: (type: NoteType) => void;
-}) {
+function EmptyHome({ onNew }: { onNew: (type: NoteType) => void }) {
   return (
     <div className="mx-auto mt-16 max-w-xl rounded-3xl border border-dashed border-line px-6 py-14 text-center">
       <p className="text-[14px] font-medium">先记下来，再决定</p>
