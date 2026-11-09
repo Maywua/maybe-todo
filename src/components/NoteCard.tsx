@@ -50,11 +50,21 @@ export default function NoteCard({
   };
 
   return (
-    <li className="relative">
+    <li
+      className={`relative isolate ${
+        sorting ? "" : "note-stack"
+      }`}
+    >
+      {!sorting && (
+        <span
+          aria-hidden="true"
+          className="note-stack-layer absolute inset-0 rounded-2xl border border-[var(--note-edge)]"
+        />
+      )}
       {dropEdge && (
         <span
           aria-hidden="true"
-          className={`pointer-events-none absolute left-0 right-0 z-10 h-[3px] rounded-full bg-accent ${
+          className={`pointer-events-none absolute left-0 right-0 z-20 h-[3px] rounded-full bg-accent ${
             dropEdge === "before" ? "-top-1.5" : "-bottom-1.5"
           }`}
         />
@@ -74,10 +84,10 @@ export default function NoteCard({
           onDrop();
         }}
         title={title}
-        className={`group relative block w-full rounded-2xl border border-sticky-edge bg-sticky p-4 text-left shadow-[0_1px_2px_rgba(27,26,22,0.06)] transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 ${
+        className={`note-stack-card relative z-10 block w-full rounded-2xl border border-[var(--note-edge)] bg-[var(--note-bg)] p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 ${
           sorting
             ? "cursor-grab active:cursor-grabbing"
-            : "cursor-pointer hover:-translate-y-0.5 hover:shadow-[0_16px_30px_-18px_rgba(27,26,22,0.45)]"
+            : "cursor-pointer"
         } ${dragging ? "opacity-40" : ""}`}
       >
         {sorting && (

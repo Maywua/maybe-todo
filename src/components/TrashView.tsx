@@ -77,7 +77,7 @@ export default function TrashView({
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
-      <header className="sticky top-0 z-30 shrink-0 border-b border-line/70 bg-paper">
+      <header className="sticky top-0 z-30 shrink-0 border-b border-line/70 bg-[var(--app-bg)]">
         <div
           className={
             inTauri
@@ -140,7 +140,7 @@ export default function TrashView({
           </div>
         ) : notes.length === 0 ? (
           <div className="mt-16 flex flex-col items-center text-center">
-            <div className="grid size-12 place-items-center rounded-2xl bg-sticky text-ink/40">
+            <div className="grid size-12 place-items-center rounded-2xl bg-[var(--note-bg)] text-ink/40">
               <ArrowLeftIcon className="size-5" />
             </div>
             <p className="mt-4 text-[15px] font-medium">回收站是空的</p>

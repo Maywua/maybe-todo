@@ -9,8 +9,6 @@
   --color-accent: #b96a35;
   --color-accent-soft: #f2e2cd;
   --color-leaf: #3f6b52;
-  --color-sticky: #f8e7a6;
-  --color-sticky-edge: #e6cd80;
 
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     "PingFang SC", "Microsoft YaHei", sans-serif;
@@ -129,6 +127,29 @@
 
   .app-scroll::-webkit-scrollbar-thumb:hover {
     background: #bda98d;
+  }
+
+  .note-stack-card {
+    transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .note-stack-layer {
+    pointer-events: none;
+    background-color: color-mix(in srgb, var(--note-bg) 86%, black);
+    opacity: 0;
+    transform: translateY(0) scale(0.985);
+    transition:
+      transform 260ms cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 180ms ease;
+  }
+
+  .note-stack:hover .note-stack-card {
+    transform: translateY(-4px);
+  }
+
+  .note-stack:hover .note-stack-layer {
+    opacity: 1;
+    transform: translateY(6px) scale(1);
   }
 
   .menu-panel {
@@ -328,6 +349,11 @@
   }
 
   .menu-panel {
+    transition: none;
+  }
+
+  .note-stack-card,
+  .note-stack-layer {
     transition: none;
   }
 }

@@ -1,8 +1,11 @@
+import { isNoteTheme, type NoteTheme } from "./noteThemes";
+
 export type PanelStyle = "card" | "drawer" | "window";
 
 export interface Settings {
   pageSize: number;
   panelStyle: PanelStyle;
+  noteTheme: NoteTheme;
 }
 
 export const PAGE_SIZE_OPTIONS = [20, 40, 60] as const;
@@ -20,6 +23,7 @@ export const PANEL_STYLE_OPTIONS: ReadonlyArray<{
 export const DEFAULT_SETTINGS: Settings = {
   pageSize: 20,
   panelStyle: "card",
+  noteTheme: "yellow",
 };
 
 const STORAGE_KEY = "maybe-todo.settings.v1";
@@ -30,7 +34,11 @@ export function loadSettings(): Settings {
     if (!raw) return { ...DEFAULT_SETTINGS };
     const parsed: unknown = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return { ...DEFAULT_SETTINGS };
-    const value = parsed as { pageSize?: unknown; panelStyle?: unknown };
+    const value = parsed as {
+      pageSize?: unknown;
+      panelStyle?: unknown;
+      noteTheme?: unknown;
+    };
     const pageSize =
       typeof value.pageSize === "number" &&
       PAGE_SIZE_OPTIONS.includes(
@@ -43,7 +51,10 @@ export function loadSettings(): Settings {
     )
       ? (value.panelStyle as PanelStyle)
       : DEFAULT_SETTINGS.panelStyle;
-    return { pageSize, panelStyle };
+    const noteTheme = isNoteTheme(value.noteTheme)
+      ? value.noteTheme
+      : DEFAULT_SETTINGS.noteTheme;
+    return { pageSize, panelStyle, noteTheme };
   } catch {
     return { ...DEFAULT_SETTINGS };
   }

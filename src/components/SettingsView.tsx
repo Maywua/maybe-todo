@@ -1,4 +1,5 @@
 import { inTauri } from "../lib/runtime";
+import { NOTE_THEME_OPTIONS, type NoteTheme } from "../lib/noteThemes";
 import {
   PAGE_SIZE_OPTIONS,
   PANEL_STYLE_OPTIONS,
@@ -36,9 +37,18 @@ export default function SettingsView({
     onToast(`便签打开方式已切换为${label ?? panelStyle}`);
   };
 
+  const chooseNoteTheme = (noteTheme: NoteTheme) => {
+    if (noteTheme === settings.noteTheme) return;
+    onChange({ ...settings, noteTheme });
+    const label = NOTE_THEME_OPTIONS.find(
+      (option) => option.value === noteTheme,
+    )?.label;
+    onToast(`便签配色已切换为${label ?? noteTheme}`);
+  };
+
   return (
     <div className="flex h-screen flex-col overflow-hidden">
-      <header className="sticky top-0 z-30 shrink-0 border-b border-line/70 bg-paper">
+      <header className="sticky top-0 z-30 shrink-0 border-b border-line/70 bg-[var(--app-bg)]">
         <div
           className={
             inTauri
@@ -154,6 +164,63 @@ export default function SettingsView({
             </section>
 
             <section className="rounded-2xl border border-line bg-card/65 p-5">
+              <h2 className="text-[14px] font-medium">便签配色</h2>
+              <p className="mt-1 text-[12px] leading-5 text-muted">
+                首页便签和便签详情窗口会一起切换配色。
+              </p>
+              <div
+                role="radiogroup"
+                aria-label="便签配色"
+                className="mt-4 grid gap-2 sm:grid-cols-2"
+              >
+                {NOTE_THEME_OPTIONS.map((option) => {
+                  const active = option.value === settings.noteTheme;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() => chooseNoteTheme(option.value)}
+                      className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-left transition ${
+                        active
+                          ? "border-ink bg-ink text-paper"
+                          : "border-line bg-paper text-ink/75 hover:border-accent/40 hover:text-ink"
+                      }`}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="grid size-9 shrink-0 place-items-center rounded-lg border p-1"
+                        style={{
+                          backgroundColor: option.colors.background,
+                          borderColor: option.colors.edge,
+                        }}
+                      >
+                        <span
+                          className="block size-full rounded-[4px]"
+                          style={{ backgroundColor: option.colors.window }}
+                        />
+                      </span>
+                      <span>
+                        <span className="block text-[12.5px] font-medium">
+                          {option.label}
+                        </span>
+                        <span
+                          className={`mt-0.5 block text-[11px] ${
+                            active ? "text-paper/60" : "text-muted"
+                          }`}
+                        >
+                          {option.hint}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-line bg-card/65 p-5">
+              <h2 className="text-[14px] font-medium">数据</h2>
               <div className="mt-4 flex flex-col gap-3">
                 <Row
                   label="存储方式"

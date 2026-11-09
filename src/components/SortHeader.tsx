@@ -9,7 +9,7 @@ interface Props {
 
 export default function SortHeader({ saving, onCancel, onSave }: Props) {
   return (
-    <header className="sticky top-0 z-30 shrink-0 border-b border-line/70 bg-paper">
+    <header className="sticky top-0 z-30 shrink-0 border-b border-line/70 bg-[var(--app-bg)]">
       <div
         className={
           inTauri

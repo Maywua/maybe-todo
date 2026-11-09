@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { AnimationEvent as ReactAnimationEvent } from "react";
+import type {
+  AnimationEvent as ReactAnimationEvent,
+  CSSProperties,
+} from "react";
 import HomeHeader from "./components/HomeHeader";
 import NoteCard from "./components/NoteCard";
 import NoteModal from "./components/NoteModal";
@@ -24,6 +27,7 @@ import {
   toSummary,
 } from "./lib/repo";
 import { loadSettings, saveSettings, type Settings } from "./lib/settings";
+import { NOTE_THEMES } from "./lib/noteThemes";
 import type { Note, NoteSummary, NoteType, View } from "./types";
 
 type ModalState =
@@ -82,6 +86,13 @@ export default function App() {
   const toastTimer = useRef<number | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const pageSize = settings.pageSize;
+  const theme = NOTE_THEMES[settings.noteTheme];
+  const themeStyle = {
+    "--app-bg": theme.colors.appBackground,
+    "--note-bg": theme.colors.background,
+    "--note-edge": theme.colors.edge,
+    "--note-window": theme.colors.window,
+  } as CSSProperties;
 
   const showToast = useCallback((message: string) => {
     setToast(message);
@@ -442,7 +453,11 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-paper text-ink">
+    <div
+      data-note-theme={settings.noteTheme}
+      style={themeStyle}
+      className="flex h-screen flex-col overflow-hidden bg-[var(--app-bg)] text-ink"
+    >
       {!booted && <Splash />}
 
       {view === "home" ? (
@@ -579,7 +594,7 @@ export default function App() {
 
 function Splash() {
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-paper">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[var(--app-bg)]">
       <div data-tauri-drag-region className="h-10 shrink-0" aria-hidden="true" />
       <div className="absolute right-2 top-1">
         <WindowControls />

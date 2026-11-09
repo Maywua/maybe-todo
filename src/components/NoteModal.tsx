@@ -334,7 +334,7 @@ export default function NoteModal({
         aria-label={mode === "new" ? "新建便签" : "编辑便签"}
         tabIndex={-1}
         onKeyDown={handleDialogKeyDown}
-        className={`flex flex-col overflow-hidden border border-line bg-card shadow-[0_30px_80px_-30px_rgba(27,26,22,0.6)] ${dialogShape} ${dialogAnimation}`}
+        className={`flex flex-col overflow-hidden border border-[var(--note-edge)] bg-[var(--note-window)] shadow-[0_30px_80px_-30px_rgba(27,26,22,0.6)] ${dialogShape} ${dialogAnimation}`}
       >
         <div className="flex h-12 shrink-0 items-center justify-between px-3">
           {showMenu ? (
@@ -356,7 +356,7 @@ export default function NoteModal({
                     openMenu();
                   }
                 }}
-                className="relative grid size-8 cursor-pointer place-items-center rounded-lg text-muted transition hover:bg-paper hover:text-ink"
+                className="relative grid size-8 cursor-pointer place-items-center rounded-lg text-muted transition hover:bg-ink/5 hover:text-ink"
               >
                 <MenuIcon className="size-4" />
                 {status === "saving" && (
@@ -442,7 +442,7 @@ export default function NoteModal({
               type="button"
               onClick={() => void close()}
               aria-label="关闭"
-              className="grid size-8 cursor-pointer place-items-center rounded-lg text-muted transition hover:bg-paper hover:text-ink"
+              className="grid size-8 cursor-pointer place-items-center rounded-lg text-muted transition hover:bg-ink/5 hover:text-ink"
             >
               <CloseIcon className="size-4" />
             </button>
@@ -467,9 +467,9 @@ export default function NoteModal({
             )}
           </div>
 
-          <div className="mt-5 rounded-2xl border border-dashed border-line bg-paper/50 px-5 py-8">
+          <div className="mt-5 rounded-2xl border border-dashed border-[var(--note-edge)] bg-[var(--note-bg)] px-5 py-8">
             <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] text-muted">
-              <span className="rounded-full border border-line bg-card px-2 py-0.5 tracking-normal normal-case">
+              <span className="rounded-full border border-[var(--note-edge)] bg-[var(--note-window)] px-2 py-0.5 tracking-normal normal-case">
                 {type === "text" ? "笔记" : "待办"}
               </span>
               <span>内容编辑 · 下一步接入</span>
