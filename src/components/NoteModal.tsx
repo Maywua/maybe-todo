@@ -28,6 +28,7 @@ interface Props {
   note: Note | null;
   panelStyle?: PanelStyle;
   onClose: () => void;
+  onClosing?: () => void;
   onSaved: (note: Note, created: boolean) => void;
   onTrashed: (id: string) => void;
   onToast: (message: string) => void;
@@ -39,6 +40,7 @@ export default function NoteModal({
   note,
   panelStyle = "card",
   onClose,
+  onClosing,
   onSaved,
   onTrashed,
   onToast,
@@ -134,10 +136,11 @@ export default function NoteModal({
     const ok = await persist(titleRef.current);
     if (!ok || closingRef.current) return;
     closingRef.current = true;
+    onClosing?.();
     setMenuOpen(false);
     setClosing(true);
     closeTimer.current = window.setTimeout(() => onClose(), 180);
-  }, [onClose, persist]);
+  }, [onClose, onClosing, persist]);
 
   const handleTitleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const value = event.currentTarget.value;
@@ -198,6 +201,7 @@ export default function NoteModal({
     try {
       await trashNote(current.id);
       closingRef.current = true;
+      onClosing?.();
       setClosing(true);
       closeTimer.current = window.setTimeout(() => onTrashed(current.id), 180);
     } catch {
@@ -311,12 +315,12 @@ export default function NoteModal({
       ? "animate-sheet-out"
       : isDrawer
         ? "animate-drawer-out"
-        : "animate-window-fade-out"
+        : "animate-window-flip-out"
     : isCard
       ? "animate-sheet-in"
       : isDrawer
         ? "animate-drawer-in"
-        : "animate-window-fade-in";
+        : "animate-window-flip-in";
 
   return (
     <div
@@ -449,7 +453,7 @@ export default function NoteModal({
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-7 pb-5">
+        <div className="app-scroll min-h-0 flex-1 overflow-y-auto px-7 pb-5">
           <div className="relative">
             <input
               autoFocus

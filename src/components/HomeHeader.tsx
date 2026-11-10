@@ -6,12 +6,10 @@ import type { NoteType } from "../types";
 import MenuPanel from "./MenuPanel";
 import {
   HomeIcon,
-  InfoIcon,
   MenuIcon,
   PlusIcon,
   PowerIcon,
   SettingsIcon,
-  SortIcon,
   TrashIcon,
 } from "./icons";
 import WindowControls from "./WindowControls";
@@ -20,8 +18,6 @@ interface Props {
   onNew: (type: NoteType) => void;
   onOpenTrash: () => void;
   onOpenSettings: () => void;
-  onStartSort: () => void;
-  canSort: boolean;
   onExit: () => void;
   blocked: boolean;
 }
@@ -30,8 +26,6 @@ export default function HomeHeader({
   onNew,
   onOpenTrash,
   onOpenSettings,
-  onStartSort,
-  canSort,
   onExit,
   blocked,
 }: Props) {
@@ -114,7 +108,7 @@ export default function HomeHeader({
       <div
         className={
           inTauri
-            ? "flex h-14 w-full items-center gap-1"
+            ? "flex h-14 w-full items-center gap-1 px-4"
             : "mx-auto flex h-14 max-w-5xl items-center gap-1 px-4"
         }
       >
@@ -157,24 +151,6 @@ export default function HomeHeader({
               }}
             >
               回收站
-            </MenuItem>
-            <MenuItem
-              icon={<SortIcon className="size-4" />}
-              disabled={!canSort}
-              title={canSort ? undefined : "至少需要两条便签"}
-              onClick={() => {
-                nav.setOpen(false);
-                onStartSort();
-              }}
-            >
-              排序
-            </MenuItem>
-            <MenuItem
-              icon={<InfoIcon className="size-4" />}
-              disabled
-              title="v1 暂未提供"
-            >
-              关于
             </MenuItem>
             <div className="my-1 h-px bg-line/80" />
             <MenuItem

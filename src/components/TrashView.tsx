@@ -81,7 +81,7 @@ export default function TrashView({
         <div
           className={
             inTauri
-              ? "flex h-14 w-full items-center gap-1"
+              ? "flex h-14 w-full items-center gap-1 px-4"
               : "mx-auto flex h-14 max-w-5xl items-center gap-1 px-4"
           }
         >

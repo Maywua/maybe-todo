@@ -98,12 +98,14 @@
     animation: drawer-out 0.18s cubic-bezier(0.4, 0, 1, 1) both;
   }
 
-  .animate-window-fade-in {
-    animation: window-fade-in 0.16s ease-out both;
+  .animate-window-flip-in {
+    transform-origin: center center;
+    animation: window-flip-in 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
-  .animate-window-fade-out {
-    animation: window-fade-out 0.16s ease-in both;
+  .animate-window-flip-out {
+    transform-origin: center center;
+    animation: window-flip-out 0.18s cubic-bezier(0.4, 0, 1, 1) both;
   }
 
   .animate-list-in {
@@ -116,21 +118,84 @@
   }
 
   .app-scroll::-webkit-scrollbar-track {
-    background: #f6f2e9;
+    background: var(--app-bg);
   }
 
   .app-scroll::-webkit-scrollbar-thumb {
-    background: #d6cab6;
-    border: 2px solid #f6f2e9;
+    background: color-mix(in srgb, var(--note-edge) 35%, var(--app-bg));
+    border: 2px solid var(--app-bg);
     border-radius: 999px;
   }
 
   .app-scroll::-webkit-scrollbar-thumb:hover {
-    background: #bda98d;
+    background: color-mix(in srgb, var(--note-edge) 55%, var(--app-bg));
   }
 
   .note-stack-card {
+    perspective: 1200px;
     transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .note-flip {
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 480ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .note-flip.is-active {
+    transform: rotateY(180deg);
+  }
+
+  .note-flip-front,
+  .note-flip-back {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+
+  .note-flip-back {
+    transform: rotateY(180deg);
+  }
+
+  .note-swap {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--note-edge);
+    border-radius: 1rem;
+    background: var(--note-bg);
+  }
+
+  .note-swap-front,
+  .note-swap-back {
+    transition: transform 360ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .note-swap-back {
+    position: absolute;
+    inset: 0;
+  }
+
+  .note-swap-vertical .note-swap-back {
+    transform: translateY(-100%);
+  }
+
+  .note-swap-vertical.is-active .note-swap-front {
+    transform: translateY(100%);
+  }
+
+  .note-swap-vertical.is-active .note-swap-back {
+    transform: translateY(0);
+  }
+
+  .note-swap-horizontal .note-swap-back {
+    transform: translateX(-100%);
+  }
+
+  .note-swap-horizontal.is-active .note-swap-front {
+    transform: translateX(100%);
+  }
+
+  .note-swap-horizontal.is-active .note-swap-back {
+    transform: translateX(0);
   }
 
   .note-stack-layer {
@@ -148,6 +213,15 @@
   }
 
   .note-stack:hover .note-stack-layer {
+    opacity: 1;
+    transform: translateY(6px) scale(1);
+  }
+
+  .note-stack.is-active .note-stack-card {
+    transform: translateY(-4px);
+  }
+
+  .note-stack.is-active .note-stack-layer {
     opacity: 1;
     transform: translateY(6px) scale(1);
   }
@@ -267,21 +341,21 @@
   }
 }
 
-@keyframes window-fade-in {
+@keyframes window-flip-in {
   from {
-    opacity: 0;
+    transform: perspective(1600px) rotateY(-90deg);
   }
   to {
-    opacity: 1;
+    transform: perspective(1600px) rotateY(0deg);
   }
 }
 
-@keyframes window-fade-out {
+@keyframes window-flip-out {
   from {
-    opacity: 1;
+    transform: perspective(1600px) rotateY(0deg);
   }
   to {
-    opacity: 0;
+    transform: perspective(1600px) rotateY(-90deg);
   }
 }
 
@@ -342,8 +416,8 @@
   .animate-sheet-out,
   .animate-drawer-in,
   .animate-drawer-out,
-  .animate-window-fade-in,
-  .animate-window-fade-out,
+  .animate-window-flip-in,
+  .animate-window-flip-out,
   .animate-list-in {
     animation: none;
   }
@@ -353,7 +427,10 @@
   }
 
   .note-stack-card,
-  .note-stack-layer {
+  .note-stack-layer,
+  .note-flip,
+  .note-swap-front,
+  .note-swap-back {
     transition: none;
   }
 }

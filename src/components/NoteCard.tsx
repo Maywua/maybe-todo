@@ -1,111 +1,77 @@
-import type { DragEvent as ReactDragEvent } from "react";
+import type { PanelStyle } from "../lib/settings";
 import type { NoteSummary } from "../types";
-import { GripIcon } from "./icons";
 
 interface Props {
   note: NoteSummary;
-  sorting: boolean;
-  dragging: boolean;
-  dropEdge: "before" | "after" | null;
+  active: boolean;
+  panelStyle: PanelStyle;
   onOpen: () => void;
-  onDragStart: (id: string) => void;
-  onDragEnd: () => void;
-  onDragOver: (id: string, edge: "before" | "after") => void;
-  onDrop: () => void;
 }
 
 export default function NoteCard({
   note,
-  sorting,
-  dragging,
-  dropEdge,
+  active,
+  panelStyle,
   onOpen,
-  onDragStart,
-  onDragEnd,
-  onDragOver,
-  onDrop,
 }: Props) {
   const title = note.title.trim() || "未命名";
   const content = note.summary.trim();
-
-  const handleDragStart = (event: ReactDragEvent<HTMLButtonElement>) => {
-    if (!sorting) return;
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", note.id);
-    try {
-      event.dataTransfer.setDragImage(event.currentTarget, 24, 24);
-    } catch {
-      // 某些浏览器/测试环境下没有真实拖拽会话，忽略拖拽预览即可。
-    }
-    onDragStart(note.id);
-  };
-
-  const handleDragOver = (event: ReactDragEvent<HTMLButtonElement>) => {
-    if (!sorting) return;
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-    const rect = event.currentTarget.getBoundingClientRect();
-    const edge = event.clientY < rect.top + rect.height / 2 ? "before" : "after";
-    onDragOver(note.id, edge);
-  };
+  const isWindow = panelStyle === "window";
+  const animationClass = isWindow
+    ? "note-flip"
+    : `note-swap ${
+        panelStyle === "drawer"
+          ? "note-swap-horizontal"
+          : "note-swap-vertical"
+      }`;
+  const frontClass = isWindow ? "note-flip-front" : "note-swap-front";
+  const backClass = isWindow ? "note-flip-back" : "note-swap-back";
+  const faceShape = isWindow
+    ? "rounded-2xl border border-[var(--note-edge)]"
+    : "";
 
   return (
     <li
-      className={`relative isolate ${
-        sorting ? "" : "note-stack"
+      className={`note-stack relative isolate ${
+        active ? "is-active" : ""
       }`}
     >
-      {!sorting && (
-        <span
-          aria-hidden="true"
-          className="note-stack-layer absolute inset-0 rounded-2xl border border-[var(--note-edge)]"
-        />
-      )}
-      {dropEdge && (
-        <span
-          aria-hidden="true"
-          className={`pointer-events-none absolute left-0 right-0 z-20 h-[3px] rounded-full bg-accent ${
-            dropEdge === "before" ? "-top-1.5" : "-bottom-1.5"
-          }`}
-        />
-      )}
-      <button
-        type="button"
-        draggable={sorting}
-        onClick={() => {
-          if (!sorting) onOpen();
-        }}
-        onDragStart={handleDragStart}
-        onDragEnd={onDragEnd}
-        onDragOver={handleDragOver}
-        onDrop={(event) => {
-          if (!sorting) return;
-          event.preventDefault();
-          onDrop();
-        }}
-        title={title}
-        className={`note-stack-card relative z-10 block w-full rounded-2xl border border-[var(--note-edge)] bg-[var(--note-bg)] p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 ${
-          sorting
-            ? "cursor-grab active:cursor-grabbing"
-            : "cursor-pointer"
-        } ${dragging ? "opacity-40" : ""}`}
-      >
-        {sorting && (
-          <span className="pointer-events-none absolute right-2.5 top-2.5 text-ink/30">
-            <GripIcon className="size-4" />
-          </span>
-        )}
-        <span
-          className={`line-clamp-2 block text-[15px] font-medium leading-6 ${
-            sorting ? "pr-5" : ""
-          }`}
+      <span
+        aria-hidden="true"
+        className="note-stack-layer absolute inset-0 rounded-2xl border border-[var(--note-edge)]"
+      />
+      <div className="note-stack-card relative z-10">
+        <div
+          className={`${animationClass} ${active ? "is-active" : ""}`}
         >
-          {title}
-        </span>
-        <span className="mt-2 line-clamp-5 block min-h-[40px] whitespace-pre-line text-[13px] leading-6 text-ink/60">
-          {content}
-        </span>
-      </button>
+          <button
+            type="button"
+            onClick={onOpen}
+            title={title}
+            className={`${frontClass} ${faceShape} block w-full cursor-pointer bg-[var(--note-bg)] p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50`}
+          >
+            <span className="line-clamp-2 block text-[15px] font-medium leading-6">
+              {title}
+            </span>
+            <span className="mt-2 line-clamp-5 block min-h-[40px] whitespace-pre-line text-[13px] leading-6 text-ink/60">
+              {content}
+            </span>
+          </button>
+
+          <div
+            aria-hidden="true"
+            className={`${backClass} ${faceShape} pointer-events-none absolute inset-0 flex flex-col justify-between overflow-hidden bg-[var(--note-window)] p-4`}
+          >
+            <span className="flex items-center gap-2 text-[10.5px] uppercase tracking-[0.16em] text-ink/45">
+              <span className="size-1.5 rounded-full bg-[var(--note-edge)]" />
+              编辑中
+            </span>
+            <span className="line-clamp-3 text-[15px] font-medium leading-6">
+              {title}
+            </span>
+          </div>
+        </div>
+      </div>
     </li>
   );
 }

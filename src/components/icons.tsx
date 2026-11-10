@@ -68,24 +68,6 @@ export function LockIcon({ className = "size-4" }: IconProps) {
   );
 }
 
-export function GripIcon({ className = "size-4" }: IconProps) {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      className={className}
-      fill="currentColor"
-      aria-hidden="true"
-    >
-      <circle cx="6" cy="4" r="1" />
-      <circle cx="10" cy="4" r="1" />
-      <circle cx="6" cy="8" r="1" />
-      <circle cx="10" cy="8" r="1" />
-      <circle cx="6" cy="12" r="1" />
-      <circle cx="10" cy="12" r="1" />
-    </svg>
-  );
-}
-
 export function ArrowLeftIcon({ className = "size-5" }: IconProps) {
   return (
     <svg
@@ -223,24 +205,6 @@ export function TrashIcon({ className = "size-4" }: IconProps) {
   );
 }
 
-export function InfoIcon({ className = "size-4" }: IconProps) {
-  return (
-    <svg
-      viewBox="0 0 20 20"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.4"
-      strokeLinecap="round"
-      aria-hidden="true"
-    >
-      <circle cx="10" cy="10" r="6.5" />
-      <path d="M10 9.2v4" />
-      <circle cx="10" cy="6.7" r="0.8" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
 export function PowerIcon({ className = "size-4" }: IconProps) {
   return (
     <svg
@@ -258,20 +222,4 @@ export function PowerIcon({ className = "size-4" }: IconProps) {
   );
 }
 
-export function SortIcon({ className = "size-4" }: IconProps) {
-  return (
-    <svg
-      viewBox="0 0 20 20"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M6 15V5M6 5 3.5 7.5M6 5l2.5 2.5" />
-      <path d="M14 5v10M14 15l-2.5-2.5M14 15l2.5-2.5" />
-    </svg>
-  );
-}
+

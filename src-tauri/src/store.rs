@@ -324,11 +324,6 @@ impl Store {
         Ok(page_of(active_sorted(&inner.notes), cursor.as_deref(), limit))
     }
 
-    pub fn list_all(&self) -> Result<Vec<NoteSummary>, String> {
-        let inner = self.inner.lock().map_err(|err| err.to_string())?;
-        Ok(active_sorted(&inner.notes))
-    }
-
     pub fn list_trash_page(
         &self,
         cursor: Option<String>,
@@ -424,32 +419,6 @@ impl Store {
         transaction.commit().map_err(|err| err.to_string())?;
         inner.notes[index] = summary.clone();
         Ok(summary)
-    }
-
-    pub fn reorder(&self, ids: Vec<String>) -> Result<(), String> {
-        let mut inner = self.inner.lock().map_err(|err| err.to_string())?;
-        let positions: std::collections::HashMap<String, usize> = inner
-            .notes
-            .iter()
-            .enumerate()
-            .map(|(index, note)| (note.id.clone(), index))
-            .collect();
-        let transaction = self.db.begin_write().map_err(|err| err.to_string())?;
-        let mut updates = Vec::new();
-        for (order, id) in ids.iter().enumerate() {
-            if let Some(index) = positions.get(id).copied() {
-                let note = &mut inner.notes[index];
-                if note.trashed_at.is_none() {
-                    note.order = order as f64;
-                    updates.push(note.clone());
-                }
-            }
-        }
-        for summary in &updates {
-            write_meta(&transaction, summary)?;
-        }
-        transaction.commit().map_err(|err| err.to_string())?;
-        Ok(())
     }
 
     pub fn trash_note(&self, id: &str) -> Result<(), String> {
@@ -604,11 +573,6 @@ pub fn list_summaries(
 }
 
 #[tauri::command]
-pub fn list_all_summaries(store: State<'_, Store>) -> Result<Vec<NoteSummary>, String> {
-    store.list_all()
-}
-
-#[tauri::command]
 pub fn list_trashed_summaries(
     store: State<'_, Store>,
     cursor: Option<String>,
@@ -635,11 +599,6 @@ pub fn update_note(store: State<'_, Store>, input: UpdateNoteInput) -> Result<No
 #[tauri::command]
 pub fn set_lock(store: State<'_, Store>, id: String, locked: bool) -> Result<NoteSummary, String> {
     store.set_lock(&id, locked)
-}
-
-#[tauri::command]
-pub fn reorder_notes(store: State<'_, Store>, ids: Vec<String>) -> Result<(), String> {
-    store.reorder(ids)
 }
 
 #[tauri::command]

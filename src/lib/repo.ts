@@ -194,18 +194,6 @@ function webSetLocked(id: string, locked: boolean): NoteSummary {
   return toSummary(updated);
 }
 
-function webReorderNotes(ids: string[]): void {
-  const all = readAll();
-  const positions = new Map(ids.map((id, index) => [id, index]));
-  writeAll(
-    all.map((note) =>
-      positions.has(note.id) && note.trashedAt === null
-        ? { ...note, order: positions.get(note.id) as number }
-        : note,
-    ),
-  );
-}
-
 function webTrashNote(id: string): void {
   const all = readAll();
   writeAll(
@@ -260,11 +248,6 @@ export async function listSummaries(
   return pageOf(activeSorted(readAll()), cursor, limit);
 }
 
-export async function listAllSummaries(): Promise<NoteSummary[]> {
-  if (inTauri) return invoke<NoteSummary[]>("list_all_summaries");
-  return activeSorted(readAll()).map(toSummary);
-}
-
 export async function listTrashedSummaries(
   cursor: string | null,
   limit: number,
@@ -302,14 +285,6 @@ export async function setLocked(
 ): Promise<NoteSummary> {
   if (inTauri) return invoke<NoteSummary>("set_lock", { id, locked });
   return webSetLocked(id, locked);
-}
-
-export async function reorderNotes(ids: string[]): Promise<void> {
-  if (inTauri) {
-    await invoke("reorder_notes", { ids });
-    return;
-  }
-  webReorderNotes(ids);
 }
 
 export async function trashNote(id: string): Promise<void> {

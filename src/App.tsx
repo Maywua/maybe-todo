@@ -7,7 +7,6 @@ import HomeHeader from "./components/HomeHeader";
 import NoteCard from "./components/NoteCard";
 import NoteModal from "./components/NoteModal";
 import SettingsView from "./components/SettingsView";
-import SortHeader from "./components/SortHeader";
 import Toast from "./components/Toast";
 import TrashView from "./components/TrashView";
 import WindowControls from "./components/WindowControls";
@@ -17,12 +16,10 @@ import {
   deleteNoteForever,
   emptyTrash,
   getNote,
-  listAllSummaries,
   listSummaries,
   listTrashedSummaries,
   purgeExpired,
   quitApp,
-  reorderNotes,
   restoreNote,
   toSummary,
 } from "./lib/repo";
@@ -72,16 +69,10 @@ export default function App() {
   const [view, setView] = useState<View>("home");
   const [modal, setModal] = useState<ModalState | null>(null);
   const [modalNote, setModalNote] = useState<Note | null>(null);
+  const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const [animateList, setAnimateList] = useState(() => !listHasAnimated);
-  const [sortItems, setSortItems] = useState<NoteSummary[] | null>(null);
-  const [sortSaving, setSortSaving] = useState(false);
-  const [dragId, setDragId] = useState<string | null>(null);
-  const [dropTarget, setDropTarget] = useState<{
-    id: string;
-    edge: "before" | "after";
-  } | null>(null);
 
   const toastTimer = useRef<number | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -92,6 +83,9 @@ export default function App() {
     "--note-bg": theme.colors.background,
     "--note-edge": theme.colors.edge,
     "--note-window": theme.colors.window,
+    "--color-paper": theme.colors.appBackground,
+    "--color-card": `color-mix(in srgb, ${theme.colors.appBackground} 30%, white)`,
+    "--color-line": `color-mix(in srgb, ${theme.colors.edge} 35%, ${theme.colors.appBackground})`,
   } as CSSProperties;
 
   const showToast = useCallback((message: string) => {
@@ -160,10 +154,8 @@ export default function App() {
     }
   }, [hasMore, loading, loadingMore, nextCursor, pageSize]);
 
-  const sorting = sortItems !== null;
-
   useEffect(() => {
-    if (sorting || loading || !hasMore || pageError) return;
+    if (loading || !hasMore || pageError) return;
     const node = sentinelRef.current;
     if (!node) return;
     const observer = new IntersectionObserver(
@@ -174,7 +166,7 @@ export default function App() {
     );
     observer.observe(node);
     return () => observer.disconnect();
-  }, [hasMore, loadMore, loading, pageError, sorting, summaries.length]);
+  }, [hasMore, loadMore, loading, pageError, summaries.length]);
 
   const loadTrash = useCallback(
     async (reset: boolean) => {
@@ -239,6 +231,7 @@ export default function App() {
       }
       setModal(null);
       setModalNote(null);
+      setActiveNoteId(null);
       showToast("已移入回收站");
     },
     [loadFirstPage, nextCursor, showToast, summaries],
@@ -313,110 +306,8 @@ export default function App() {
     setView("settings");
   }, []);
 
-  const startSort = useCallback(async () => {
-    if (summaries.length < 2 && !hasMore) return;
-    try {
-      const all = await listAllSummaries();
-      if (all.length < 2) return;
-      setSortItems(all);
-      setDragId(null);
-      setDropTarget(null);
-    } catch {
-      showToast("排序加载失败，请重试");
-    }
-  }, [hasMore, showToast, summaries.length]);
-
-  const cancelSort = useCallback(() => {
-    setSortItems(null);
-    setDragId(null);
-    setDropTarget(null);
-  }, []);
-
-  const saveSort = useCallback(async () => {
-    if (!sortItems || sortSaving) return;
-    setSortSaving(true);
-    try {
-      const ordered = sortItems.map((note, index) => ({
-        ...note,
-        order: index,
-      }));
-      await reorderNotes(ordered.map((note) => note.id));
-      setSummaries(ordered.slice(0, pageSize));
-      setNextCursor(
-        ordered.length > pageSize ? ordered[pageSize - 1].id : null,
-      );
-      setHasMore(ordered.length > pageSize);
-      setSortItems(null);
-      setDragId(null);
-      setDropTarget(null);
-      showToast("排序已保存");
-    } catch {
-      showToast("排序保存失败，请重试");
-    } finally {
-      setSortSaving(false);
-    }
-  }, [pageSize, showToast, sortItems, sortSaving]);
-
-  const handleSortDragStart = useCallback(
-    (id: string) => {
-      if (sortSaving) return;
-      setDragId(id);
-      setDropTarget(null);
-    },
-    [sortSaving],
-  );
-
-  const handleSortDragOver = useCallback(
-    (id: string, edge: "before" | "after") => {
-      if (!sortItems || sortSaving || !dragId || dragId === id) return;
-      setDropTarget((current) =>
-        current?.id === id && current.edge === edge
-          ? current
-          : { id, edge },
-      );
-    },
-    [dragId, sortItems, sortSaving],
-  );
-
-  const handleSortDrop = useCallback(() => {
-    if (!sortItems || sortSaving || !dragId || !dropTarget) {
-      setDragId(null);
-      setDropTarget(null);
-      return;
-    }
-    if (dragId === dropTarget.id) {
-      setDragId(null);
-      setDropTarget(null);
-      return;
-    }
-    const ids = sortItems.map((note) => note.id);
-    const from = ids.indexOf(dragId);
-    if (from === -1) {
-      setDragId(null);
-      setDropTarget(null);
-      return;
-    }
-    const [moved] = ids.splice(from, 1);
-    let insertAt = ids.indexOf(dropTarget.id);
-    if (insertAt === -1) {
-      setDragId(null);
-      setDropTarget(null);
-      return;
-    }
-    if (dropTarget.edge === "after") insertAt += 1;
-    ids.splice(insertAt, 0, moved);
-    const byId = new Map(sortItems.map((note) => [note.id, note]));
-    setSortItems(ids.map((id) => byId.get(id) as NoteSummary));
-    setDragId(null);
-    setDropTarget(null);
-  }, [dragId, dropTarget, sortItems, sortSaving]);
-
-  const handleSortDragEnd = useCallback(() => {
-    setDragId(null);
-    setDropTarget(null);
-  }, []);
-
   const openNew = useCallback((type: NoteType) => {
+    setActiveNoteId(null);
     setModalNote(null);
     setModal({ mode: "new", type });
   }, []);
@@ -426,6 +317,7 @@ export default function App() {
       try {
         const note = await getNote(id);
         setModalNote(note);
+        setActiveNoteId(id);
         setModal({ mode: "edit", id });
       } catch {
         showToast("便签读取失败，请重试");
@@ -435,12 +327,11 @@ export default function App() {
   );
 
   const columnCount = useColumnCount();
-  const displayNotes = sortItems ?? summaries;
   const columns: NoteSummary[][] = Array.from(
     { length: columnCount },
     () => [] as NoteSummary[],
   );
-  displayNotes.forEach((note, index) => {
+  summaries.forEach((note, index) => {
     columns[index % columnCount].push(note);
   });
 
@@ -462,23 +353,13 @@ export default function App() {
 
       {view === "home" ? (
         <>
-          {sorting ? (
-            <SortHeader
-              saving={sortSaving}
-              onCancel={cancelSort}
-              onSave={() => void saveSort()}
-            />
-          ) : (
-            <HomeHeader
-              onNew={openNew}
-              onOpenTrash={openTrash}
-              onOpenSettings={openSettings}
-              onStartSort={() => void startSort()}
-              canSort={summaries.length >= 2 || hasMore}
-              onExit={() => void handleExit()}
-              blocked={modal !== null}
-            />
-          )}
+          <HomeHeader
+            onNew={openNew}
+            onOpenTrash={openTrash}
+            onOpenSettings={openSettings}
+            onExit={() => void handleExit()}
+            blocked={modal !== null}
+          />
 
           <main className="app-scroll min-h-0 flex-1 overflow-y-auto">
             <div className="mx-auto w-full max-w-5xl px-4 pb-24 pt-8">
@@ -486,7 +367,7 @@ export default function App() {
               <ListSkeleton columnCount={columnCount} />
             ) : error ? (
               <ErrorState message={error} onRetry={() => void loadFirstPage()} />
-            ) : displayNotes.length === 0 ? (
+            ) : summaries.length === 0 ? (
               <EmptyHome onNew={openNew} />
             ) : (
               <>
@@ -505,24 +386,15 @@ export default function App() {
                         <NoteCard
                           key={note.id}
                           note={note}
-                          sorting={sorting}
-                          dragging={dragId === note.id}
-                          dropEdge={
-                            dropTarget?.id === note.id
-                              ? dropTarget.edge
-                              : null
-                          }
+                          active={activeNoteId === note.id}
+                          panelStyle={settings.panelStyle}
                           onOpen={() => void openEdit(note.id)}
-                          onDragStart={handleSortDragStart}
-                          onDragEnd={handleSortDragEnd}
-                          onDragOver={handleSortDragOver}
-                          onDrop={handleSortDrop}
                         />
                       ))}
                     </ul>
                   ))}
                 </div>
-                {!sorting && (hasMore || pageError) && (
+                {(hasMore || pageError) && (
                   <div
                     ref={sentinelRef}
                     className="flex h-8 items-center justify-center"
@@ -577,9 +449,11 @@ export default function App() {
           type={modal.mode === "new" ? modal.type : modalNote!.type}
           note={modal.mode === "new" ? null : modalNote}
           panelStyle={settings.panelStyle}
+          onClosing={() => setActiveNoteId(null)}
           onClose={() => {
             setModal(null);
             setModalNote(null);
+            setActiveNoteId(null);
           }}
           onSaved={handleSaved}
           onTrashed={handleTrashed}
@@ -626,7 +500,7 @@ function ListSkeleton({ columnCount }: { columnCount: number }) {
             <div
               key={row}
               style={{ height }}
-              className="animate-pulse rounded-2xl border border-sticky-edge/60 bg-sticky/50"
+              className="animate-pulse rounded-2xl border border-[var(--note-edge)] bg-[var(--note-bg)]"
             />
           ))}
         </div>
