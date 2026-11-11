@@ -6,9 +6,15 @@ import type {
 import HomeHeader from "./components/HomeHeader";
 import NoteCard from "./components/NoteCard";
 import NoteModal from "./components/NoteModal";
-import SettingsView from "./components/SettingsView";
+import AboutPanel from "./components/AboutPanel";
+import PanelSidebar, {
+  PanelTopNav,
+  type PanelTab,
+} from "./components/PanelSidebar";
+import SettingsPanel from "./components/SettingsPanel";
 import Toast from "./components/Toast";
-import TrashView from "./components/TrashView";
+import TrashPanel from "./components/TrashPanel";
+import WindowPanel from "./components/WindowPanel";
 import WindowControls from "./components/WindowControls";
 import Logo from "./components/Logo";
 import { useColumnCount } from "./hooks/useColumnCount";
@@ -25,7 +31,7 @@ import {
 } from "./lib/repo";
 import { loadSettings, saveSettings, type Settings } from "./lib/settings";
 import { NOTE_THEMES } from "./lib/noteThemes";
-import type { Note, NoteSummary, NoteType, View } from "./types";
+import type { Note, NoteSummary, NoteType } from "./types";
 
 type ModalState =
   | { mode: "new"; type: NoteType }
@@ -66,7 +72,8 @@ export default function App() {
   const [trashLoading, setTrashLoading] = useState(false);
   const [trashLoadingMore, setTrashLoadingMore] = useState(false);
   const [trashError, setTrashError] = useState<string | null>(null);
-  const [view, setView] = useState<View>("home");
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [panelTab, setPanelTab] = useState<PanelTab>("settings");
   const [modal, setModal] = useState<ModalState | null>(null);
   const [modalNote, setModalNote] = useState<Note | null>(null);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
@@ -83,6 +90,7 @@ export default function App() {
     "--note-bg": theme.colors.background,
     "--note-edge": theme.colors.edge,
     "--note-window": theme.colors.window,
+    "--theme-dark": theme.colors.dark,
     "--color-paper": theme.colors.appBackground,
     "--color-card": `color-mix(in srgb, ${theme.colors.appBackground} 30%, white)`,
     "--color-line": `color-mix(in srgb, ${theme.colors.edge} 35%, ${theme.colors.appBackground})`,
@@ -199,11 +207,6 @@ export default function App() {
     [pageSize, trashCursor, trashHasMore, trashLoading, trashLoadingMore],
   );
 
-  const openTrash = useCallback(() => {
-    setView("trash");
-    void loadTrash(true);
-  }, [loadTrash]);
-
   const loadMoreTrash = useCallback(() => {
     void loadTrash(false);
   }, [loadTrash]);
@@ -302,9 +305,39 @@ export default function App() {
     saveSettings(next);
   }, []);
 
-  const openSettings = useCallback(() => {
-    setView("settings");
+  const openPanel = useCallback(() => {
+    setPanelTab("settings");
+    setPanelOpen(true);
   }, []);
+
+  const closePanel = useCallback(() => {
+    setPanelOpen(false);
+    setPanelTab("settings");
+    setTrashed([]);
+    setTrashCursor(null);
+    setTrashHasMore(false);
+    setTrashError(null);
+  }, []);
+
+  const selectPanelTab = useCallback(
+    (tab: PanelTab) => {
+      if (tab === panelTab) return;
+      setPanelTab(tab);
+      if (tab === "trash") {
+        setTrashed([]);
+        setTrashCursor(null);
+        setTrashHasMore(false);
+        setTrashError(null);
+        void loadTrash(true);
+      } else {
+        setTrashed([]);
+        setTrashCursor(null);
+        setTrashHasMore(false);
+        setTrashError(null);
+      }
+    },
+    [loadTrash, panelTab],
+  );
 
   const openNew = useCallback((type: NoteType) => {
     setActiveNoteId(null);
@@ -351,96 +384,116 @@ export default function App() {
     >
       {!booted && <Splash />}
 
-      {view === "home" ? (
-        <>
-          <HomeHeader
-            onNew={openNew}
-            onOpenTrash={openTrash}
-            onOpenSettings={openSettings}
-            onExit={() => void handleExit()}
-            blocked={modal !== null}
-          />
+      <HomeHeader
+        onNew={openNew}
+        onOpenPanel={openPanel}
+        blocked={modal !== null || panelOpen}
+      />
 
-          <main className="app-scroll min-h-0 flex-1 overflow-y-auto">
-            <div className="mx-auto w-full max-w-5xl px-4 pb-24 pt-8">
-            {loading ? (
-              <ListSkeleton columnCount={columnCount} />
-            ) : error ? (
-              <ErrorState message={error} onRetry={() => void loadFirstPage()} />
-            ) : summaries.length === 0 ? (
-              <EmptyHome onNew={openNew} />
-            ) : (
-              <>
-                <div
-                  className={`flex items-start gap-3 ${
-                    booted && animateList ? "animate-list-in" : ""
-                  }`}
-                  onAnimationEnd={handleListAnimationEnd}
-                >
-                  {columns.map((column, columnIndex) => (
-                    <ul
-                      key={columnIndex}
-                      className="flex min-w-0 flex-1 flex-col gap-3"
-                    >
-                      {column.map((note) => (
-                        <NoteCard
-                          key={note.id}
-                          note={note}
-                          active={activeNoteId === note.id}
-                          panelStyle={settings.panelStyle}
-                          onOpen={() => void openEdit(note.id)}
-                        />
-                      ))}
-                    </ul>
-                  ))}
-                </div>
-                {(hasMore || pageError) && (
-                  <div
-                    ref={sentinelRef}
-                    className="flex h-8 items-center justify-center"
+      <main className="app-scroll min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-5xl px-4 pb-24 pt-8">
+          {loading ? (
+            <ListSkeleton columnCount={columnCount} />
+          ) : error ? (
+            <ErrorState message={error} onRetry={() => void loadFirstPage()} />
+          ) : summaries.length === 0 ? (
+            <EmptyHome onNew={openNew} />
+          ) : (
+            <>
+              <div
+                className={`flex items-start gap-3 ${
+                  booted && animateList ? "animate-list-in" : ""
+                }`}
+                onAnimationEnd={handleListAnimationEnd}
+              >
+                {columns.map((column, columnIndex) => (
+                  <ul
+                    key={columnIndex}
+                    className="flex min-w-0 flex-1 flex-col gap-3"
                   >
-                    {pageError ? (
-                      <button
-                        type="button"
-                        onClick={() => void loadMore()}
-                        className="cursor-pointer text-[12px] text-accent underline-offset-2 hover:underline"
-                      >
-                        加载失败，点击重试
-                      </button>
-                    ) : loadingMore ? (
-                      <span
-                        aria-label="加载中"
-                        className="size-3.5 animate-spin rounded-full border-2 border-line border-t-accent"
+                    {column.map((note) => (
+                      <NoteCard
+                        key={note.id}
+                        note={note}
+                        active={activeNoteId === note.id}
+                        panelStyle={settings.panelStyle}
+                        onOpen={() => void openEdit(note.id)}
                       />
-                    ) : null}
-                  </div>
-                )}
-              </>
-            )}
-            </div>
-          </main>
-        </>
-      ) : view === "settings" ? (
-        <SettingsView
-          settings={settings}
-          onChange={updateSettings}
-          onToast={showToast}
-          onBack={() => setView("home")}
-        />
-      ) : (
-        <TrashView
-          notes={trashed}
-          loading={trashLoading}
-          loadingMore={trashLoadingMore}
-          hasMore={trashHasMore}
-          error={trashError}
-          onLoadMore={loadMoreTrash}
-          onRetry={() => void loadTrash(true)}
-          onBack={() => setView("home")}
-          onRestore={(id) => void handleRestore(id)}
-          onDeleteForever={(id) => void handleDeleteForever(id)}
-          onEmptyTrash={() => void handleEmptyTrash()}
-        />
+                    ))}
+                  </ul>
+                ))}
+              </div>
+              {(hasMore || pageError) && (
+                <div
+                  ref={sentinelRef}
+                  className="flex h-8 items-center justify-center"
+                >
+                  {pageError ? (
+                    <button
+                      type="button"
+                      onClick={() => void loadMore()}
+                      className="cursor-pointer text-[12px] text-accent underline-offset-2 hover:underline"
+                    >
+                      加载失败，点击重试
+                    </button>
+                  ) : loadingMore ? (
+                    <span
+                      aria-label="加载中"
+                      className="size-3.5 animate-spin rounded-full border-2 border-line border-t-accent"
+                    />
+                  ) : null}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </main>
+
+      {panelOpen && (
+        <WindowPanel
+          title="菜单"
+          panelStyle={settings.panelStyle}
+          widthClass="max-w-[1000px]"
+          onClose={closePanel}
+          sidebar={
+            <PanelSidebar
+              active={panelTab}
+              onSelect={selectPanelTab}
+              onExit={() => void handleExit()}
+            />
+          }
+          topNav={
+            <PanelTopNav
+              active={panelTab}
+              onSelect={selectPanelTab}
+              onExit={() => void handleExit()}
+            />
+          }
+        >
+          {panelTab === "settings" ? (
+            <SettingsPanel
+              settings={settings}
+              onChange={updateSettings}
+              onToast={showToast}
+            />
+          ) : panelTab === "trash" ? (
+            <TrashPanel
+              notes={trashed}
+              loading={trashLoading}
+              loadingMore={trashLoadingMore}
+              hasMore={trashHasMore}
+              error={trashError}
+              onLoadMore={loadMoreTrash}
+              onRetry={() => void loadTrash(true)}
+              onClose={closePanel}
+              onRestore={(id) => void handleRestore(id)}
+              onDeleteForever={(id) => void handleDeleteForever(id)}
+              onEmptyTrash={() => void handleEmptyTrash()}
+            />
+          ) : (
+            <AboutPanel />
+          )}
+        </WindowPanel>
       )}
 
       {modal && (modal.mode === "new" || modalNote) && (

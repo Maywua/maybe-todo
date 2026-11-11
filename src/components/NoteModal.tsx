@@ -306,10 +306,10 @@ export default function NoteModal({
       ? "items-stretch justify-end p-0"
       : "items-center justify-center p-4";
   const dialogShape = isCard
-    ? "max-h-[80vh] w-full max-w-[640px] rounded-t-3xl border-b-0"
+    ? "h-[80vh] w-full max-w-[640px] rounded-t-3xl border-b-0"
     : isDrawer
       ? "h-full max-h-none w-full max-w-[640px] rounded-l-3xl border-r-0"
-      : "max-h-[80vh] w-full max-w-[640px] rounded-3xl";
+      : "h-[80vh] w-full max-w-[640px] rounded-3xl";
   const dialogAnimation = closing
     ? isCard
       ? "animate-sheet-out"

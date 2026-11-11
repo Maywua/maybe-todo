@@ -205,6 +205,24 @@ export function TrashIcon({ className = "size-4" }: IconProps) {
   );
 }
 
+export function InfoIcon({ className = "size-4" }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <circle cx="10" cy="10" r="6.5" />
+      <path d="M10 9.2v4" />
+      <circle cx="10" cy="6.7" r="0.8" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 export function PowerIcon({ className = "size-4" }: IconProps) {
   return (
     <svg

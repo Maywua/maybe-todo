@@ -9,6 +9,8 @@ export interface NoteThemeColors {
   edge: string;
   /** 详情窗口外壳，比 background 更浅。 */
   window: string;
+  /** 主题深色，用于选中项等深色面。 */
+  dark: string;
 }
 
 export interface NoteThemeDefinition {
@@ -32,6 +34,7 @@ export const NOTE_THEMES: Record<NoteTheme, NoteThemeDefinition> = {
       background: "#f8e7a6",
       edge: "#e6cd80",
       window: "#fdf3c7",
+      dark: "#dab16a",
     },
   },
   blue: {
@@ -43,6 +46,7 @@ export const NOTE_THEMES: Record<NoteTheme, NoteThemeDefinition> = {
       background: "#d7e8f2",
       edge: "#a8c8da",
       window: "#edf7fc",
+      dark: "#3598da",
     },
   },
 };
