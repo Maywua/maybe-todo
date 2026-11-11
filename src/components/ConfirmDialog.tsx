@@ -27,7 +27,7 @@ export default function ConfirmDialog({
   }, [onCancel]);
 
   return (
-    <div className="animate-fade fixed inset-0 z-50 flex items-center justify-center bg-ink/30 p-4">
+    <div className="animate-fade fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay)] p-4">
       <div
         role="alertdialog"
         aria-modal="true"

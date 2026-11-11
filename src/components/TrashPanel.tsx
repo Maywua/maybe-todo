@@ -113,7 +113,20 @@ export default function TrashPanel({
         </div>
       ) : notes.length === 0 ? (
         <div className="my-12 flex flex-col items-center text-center">
+          <div className="grid size-12 place-items-center rounded-2xl bg-[var(--note-bg)] text-ink/40">
+            <ArrowLeftIcon className="size-5" />
+          </div>
           <p className="mt-4 text-[15px] font-medium">回收站是空的</p>
+          <p className="mt-1 text-[13px] text-muted">
+            删除的便签会在这里保留 30 天。
+          </p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="mt-5 cursor-pointer rounded-xl bg-ink px-4 py-2 text-[13px] font-medium text-paper transition hover:bg-ink/85"
+          >
+            关闭
+          </button>
         </div>
       ) : (
         <ul className="flex flex-col gap-2">

@@ -55,7 +55,7 @@ export default function HomeHeader({ onNew, onOpenPanel, blocked }: Props) {
       <MenuPanel
         open={add.open}
         align={inTauri ? "left" : "right"}
-        className={`absolute top-11 z-40 w-36 rounded-xl border border-line bg-card p-1 shadow-[0_18px_40px_-20px_rgba(27,26,22,0.5)] ${
+        className={`absolute top-11 z-40 w-36 rounded-xl border border-line p-1 shadow-[0_18px_40px_-20px_rgba(27,26,22,0.5)] ${
           inTauri ? "left-0" : "right-0"
         }`}
       >
@@ -80,7 +80,7 @@ export default function HomeHeader({ onNew, onOpenPanel, blocked }: Props) {
   );
 
   return (
-    <header className="sticky top-0 z-30 shrink-0 border-b border-line/70 bg-[var(--app-bg)]">
+    <header className="sticky top-0 z-30 shrink-0 border-b border-line/70 bg-transparent">
       <div
         className={
           inTauri
@@ -126,7 +126,7 @@ function MenuItem({
       type="button"
       role="menuitem"
       onClick={onClick}
-      className="flex w-full cursor-pointer items-center rounded-lg px-2.5 py-2 text-left text-[13px] text-ink transition hover:bg-paper"
+      className="flex w-full cursor-pointer items-center rounded-lg px-2.5 py-2 text-left text-[13px] text-ink transition hover:bg-(--note-bg)"
     >
       {children}
     </button>

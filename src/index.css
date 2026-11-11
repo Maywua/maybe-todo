@@ -6,8 +6,8 @@
   --color-ink: #1b1a16;
   --color-muted: #6f6859;
   --color-line: #e4dccb;
-  --color-accent: #b96a35;
-  --color-accent-soft: #f2e2cd;
+  --color-accent: #e26969;
+  --color-accent-soft: #d43d3d;
   --color-leaf: #3f6b52;
 
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI",
@@ -401,6 +401,38 @@
     opacity: 0;
     transform: translateY(16px) scale(0.98);
   }
+}
+
+.home-backdrop-glow {
+  position: absolute;
+  left: -12rem;
+  top: -16rem;
+  width: 42rem;
+  height: 42rem;
+  background: radial-gradient(circle, var(--backdrop-glow) 0%, transparent 68%);
+  filter: blur(18px);
+  opacity: 0.9;
+}
+
+.home-backdrop-dots {
+  background-image: radial-gradient(
+    circle,
+    var(--backdrop-dot) 1px,
+    transparent 1.4px
+  );
+  background-size: 19px 19px;
+  mask-image: radial-gradient(
+    ellipse 82% 78% at 50% 42%,
+    transparent 0%,
+    transparent 32%,
+    black 76%
+  );
+  -webkit-mask-image: radial-gradient(
+    ellipse 82% 78% at 50% 42%,
+    transparent 0%,
+    transparent 32%,
+    black 76%
+  );
 }
 
 @media (prefers-reduced-motion: reduce) {

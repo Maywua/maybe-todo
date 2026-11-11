@@ -44,7 +44,7 @@ export default function MenuPanel({
       role="menu"
       data-state={expanded ? "open" : "closed"}
       data-align={align}
-      className={`menu-panel ${className}`}
+      className={`menu-panel bg-(--note-window) ${className}`}
     >
       {children}
     </div>

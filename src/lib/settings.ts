@@ -1,11 +1,13 @@
 import { isNoteTheme, type NoteTheme } from "./noteThemes";
 
 export type PanelStyle = "card" | "drawer" | "window";
+export type ColorMode = "light" | "dark";
 
 export interface Settings {
   pageSize: number;
   panelStyle: PanelStyle;
   noteTheme: NoteTheme;
+  colorMode: ColorMode;
 }
 
 export const PAGE_SIZE_OPTIONS = [20, 40, 60] as const;
@@ -24,6 +26,7 @@ export const DEFAULT_SETTINGS: Settings = {
   pageSize: 20,
   panelStyle: "card",
   noteTheme: "yellow",
+  colorMode: "light",
 };
 
 const STORAGE_KEY = "maybe-todo.settings.v1";
@@ -38,6 +41,7 @@ export function loadSettings(): Settings {
       pageSize?: unknown;
       panelStyle?: unknown;
       noteTheme?: unknown;
+      colorMode?: unknown;
     };
     const pageSize =
       typeof value.pageSize === "number" &&
@@ -54,7 +58,9 @@ export function loadSettings(): Settings {
     const noteTheme = isNoteTheme(value.noteTheme)
       ? value.noteTheme
       : DEFAULT_SETTINGS.noteTheme;
-    return { pageSize, panelStyle, noteTheme };
+    const colorMode: ColorMode =
+      value.colorMode === "dark" ? "dark" : "light";
+    return { pageSize, panelStyle, noteTheme, colorMode };
   } catch {
     return { ...DEFAULT_SETTINGS };
   }

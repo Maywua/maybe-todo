@@ -1,4 +1,4 @@
-export type NoteTheme = "yellow" | "blue";
+export type NoteTheme = "yellow" | "blue" | "green" | "cyan";
 
 export interface NoteThemeColors {
   /** 应用根背景。 */
@@ -24,11 +24,10 @@ export interface NoteThemeDefinition {
  * 便签主题唯一配置入口。
  * 调整颜色后，首页卡片、悬停纸片、详情窗口和设置页色块会一起变化。
  */
-export const NOTE_THEMES: Record<NoteTheme, NoteThemeDefinition> = {
-  yellow: {
+export const NOTE_THEMES: Record<NoteTheme, NoteThemeDefinition> = {  yellow: {
     value: "yellow",
     label: "黄色",
-    hint: "暖色便签",
+    hint: "阳光慵懒倚靠在窗沿的某个午后",
     colors: {
       appBackground: "#f6f2e9",
       background: "#f8e7a6",
@@ -40,7 +39,7 @@ export const NOTE_THEMES: Record<NoteTheme, NoteThemeDefinition> = {
   blue: {
     value: "blue",
     label: "蓝色",
-    hint: "雾蓝便签",
+    hint: "浪花是天空倒映的涟漪",
     colors: {
       appBackground: "#edf2f6",
       background: "#d7e8f2",
@@ -49,9 +48,66 @@ export const NOTE_THEMES: Record<NoteTheme, NoteThemeDefinition> = {
       dark: "#3598da",
     },
   },
+  green: {
+    value: "green",
+    label: "绿色",
+    hint: "藏于万千世界的一叶",
+    colors: {
+      appBackground: "#eef4ec",
+      background: "#dcebd2",
+      edge: "#a9c99e",
+      window: "#f2f9ee",
+      dark: "#4f9166",
+    },
+  },
+  cyan: {
+    value: "cyan",
+    label: "青色",
+    hint: "等烟雨，亦等你",
+    colors: {
+      appBackground: "#eaf2f3",
+      background: "#d4eaec",
+      edge: "#9cc7cc",
+      window: "#f0f9fa",
+      dark: "#3196a3",
+    },
+  },
 };
 
 export const NOTE_THEME_OPTIONS = Object.values(NOTE_THEMES);
+
+export interface DarkModeColors {
+  appBackground: string;
+  card: string;
+  line: string;
+  ink: string;
+  muted: string;
+  accent: string;
+  accentSoft: string;
+  leaf: string;
+  noteBackground: string;
+  noteEdge: string;
+  noteWindow: string;
+  themeDark: string;
+  overlay: string;
+}
+
+/** 暗色模式独立配色，不读取便签主题。 */
+export const DARK_MODE_COLORS: DarkModeColors = {
+  appBackground: "#151412",
+  card: "#201e1a",
+  line: "#3a352d",
+  ink: "#eee8dc",
+  muted: "#a49b8b",
+  accent: "#d08a52",
+  accentSoft: "#3b2b1e",
+  leaf: "#83a88a",
+  noteBackground: "#2a2621",
+  noteEdge: "#4a4339",
+  noteWindow: "#332f28",
+  themeDark: "#d0ac74",
+  overlay: "rgb(0 0 0 / 0.62)",
+};
 
 export function isNoteTheme(value: unknown): value is NoteTheme {
   return (

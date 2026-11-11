@@ -71,7 +71,7 @@ export default function PanelSidebar({ active, onSelect, onExit }: Props) {
   );
 }
 
-export function PanelTopNav({ active, onSelect, onExit }: Props) {
+export function PanelTopNav({ active, onSelect }: Props) {
   return (
     <div className="flex w-full shrink-0 items-center gap-0.5 border-b border-line/70 px-5 py-2 md:hidden">
       {items.map((item) => {

@@ -91,7 +91,7 @@ export default function WindowPanel({
 
   return (
     <div
-      className={`fixed inset-0 z-40 flex bg-ink/25 ${overlayPosition} ${
+      className={`fixed inset-0 z-40 flex bg-[var(--overlay)] ${overlayPosition} ${
         closing ? "animate-fade-out" : "animate-fade"
       }`}
       onMouseDown={(event) => {

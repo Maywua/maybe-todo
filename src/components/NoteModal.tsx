@@ -324,7 +324,7 @@ export default function NoteModal({
 
   return (
     <div
-      className={`fixed inset-0 z-40 flex bg-ink/25 ${overlayPosition} ${
+      className={`fixed inset-0 z-40 flex bg-[var(--overlay)] ${overlayPosition} ${
         closing ? "animate-fade-out pointer-events-none" : "animate-fade"
       }`}
       onMouseDown={(event) => {
@@ -372,14 +372,14 @@ export default function NoteModal({
               </button>
               <MenuPanel
                 open={menuOpen}
-                className="absolute left-0 top-9 z-20 w-48 rounded-xl border border-line bg-card p-1 shadow-[0_18px_40px_-20px_rgba(27,26,22,0.5)]"
+                className="absolute left-0 top-9 z-20 w-48 rounded-xl border border-line p-1 shadow-[0_18px_40px_-20px_rgba(27,26,22,0.5)]"
               >
                 <button
                   type="button"
                   role="menuitemcheckbox"
                   aria-checked={locked}
                   onClick={() => void handleLock()}
-                  className="flex cursor-pointer w-full items-center justify-between rounded-lg px-2.5 py-2 text-[13px] text-ink transition hover:bg-paper"
+                  className="flex cursor-pointer w-full items-center justify-between rounded-lg px-2.5 py-2 text-[13px] text-ink transition"
                 >
                   <span>锁定</span>
                   <span
@@ -398,7 +398,7 @@ export default function NoteModal({
                   type="button"
                   role="menuitem"
                   onClick={() => void handleDelete()}
-                  className="flex cursor-pointer w-full items-center rounded-lg px-2.5 py-2 text-left text-[13px] text-accent transition hover:bg-accent-soft/60"
+                  className="flex cursor-pointer w-full items-center rounded-lg px-2.5 py-2 text-left text-[13px] text-accent transition hover:bg-(--note-bg)"
                 >
                   删除
                 </button>

@@ -3,6 +3,7 @@ import type {
   AnimationEvent as ReactAnimationEvent,
   CSSProperties,
 } from "react";
+import HomeBackdrop from "./components/HomeBackdrop";
 import HomeHeader from "./components/HomeHeader";
 import NoteCard from "./components/NoteCard";
 import NoteModal from "./components/NoteModal";
@@ -30,7 +31,7 @@ import {
   toSummary,
 } from "./lib/repo";
 import { loadSettings, saveSettings, type Settings } from "./lib/settings";
-import { NOTE_THEMES } from "./lib/noteThemes";
+import { DARK_MODE_COLORS, NOTE_THEMES } from "./lib/noteThemes";
 import type { Note, NoteSummary, NoteType } from "./types";
 
 type ModalState =
@@ -85,16 +86,43 @@ export default function App() {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const pageSize = settings.pageSize;
   const theme = NOTE_THEMES[settings.noteTheme];
-  const themeStyle = {
-    "--app-bg": theme.colors.appBackground,
-    "--note-bg": theme.colors.background,
-    "--note-edge": theme.colors.edge,
-    "--note-window": theme.colors.window,
-    "--theme-dark": theme.colors.dark,
-    "--color-paper": theme.colors.appBackground,
-    "--color-card": `color-mix(in srgb, ${theme.colors.appBackground} 30%, white)`,
-    "--color-line": `color-mix(in srgb, ${theme.colors.edge} 35%, ${theme.colors.appBackground})`,
-  } as CSSProperties;
+  const themeStyle =
+    settings.colorMode === "dark"
+      ? ({
+          "--app-bg": DARK_MODE_COLORS.appBackground,
+          "--note-bg": DARK_MODE_COLORS.noteBackground,
+          "--note-edge": DARK_MODE_COLORS.noteEdge,
+          "--note-window": DARK_MODE_COLORS.noteWindow,
+          "--theme-dark": DARK_MODE_COLORS.themeDark,
+          "--color-paper": DARK_MODE_COLORS.appBackground,
+          "--color-card": DARK_MODE_COLORS.card,
+          "--color-line": DARK_MODE_COLORS.line,
+          "--color-ink": DARK_MODE_COLORS.ink,
+          "--color-muted": DARK_MODE_COLORS.muted,
+          "--color-accent": DARK_MODE_COLORS.accent,
+          "--color-accent-soft": DARK_MODE_COLORS.accentSoft,
+          "--color-leaf": DARK_MODE_COLORS.leaf,
+          "--overlay": DARK_MODE_COLORS.overlay,
+          "--backdrop-dot": `color-mix(in srgb, ${DARK_MODE_COLORS.muted} 22%, transparent)`,
+          "--backdrop-glow": `color-mix(in srgb, ${DARK_MODE_COLORS.noteBackground} 80%, transparent)`,
+        } as CSSProperties)
+      : ({
+          "--app-bg": theme.colors.appBackground,
+          "--note-bg": theme.colors.background,
+          "--note-edge": theme.colors.edge,
+          "--note-window": theme.colors.window,
+          "--theme-dark": theme.colors.dark,
+          "--color-paper": theme.colors.appBackground,
+          "--color-card": `color-mix(in srgb, ${theme.colors.appBackground} 30%, white)`,
+          "--color-line": `color-mix(in srgb, ${theme.colors.edge} 35%, ${theme.colors.appBackground})`,
+          "--overlay": "rgb(27 26 22 / 0.25)",
+          "--backdrop-dot": `color-mix(in srgb, ${theme.colors.edge} 52%, transparent)`,
+          "--backdrop-glow": `color-mix(in srgb, ${theme.colors.background} 55%, transparent)`,
+        } as CSSProperties);
+
+  useEffect(() => {
+    document.documentElement.style.colorScheme = settings.colorMode;
+  }, [settings.colorMode]);
 
   const showToast = useCallback((message: string) => {
     setToast(message);
@@ -379,10 +407,13 @@ export default function App() {
   return (
     <div
       data-note-theme={settings.noteTheme}
+      data-color-mode={settings.colorMode}
       style={themeStyle}
       className="flex h-screen flex-col overflow-hidden bg-[var(--app-bg)] text-ink"
     >
       {!booted && <Splash />}
+
+      <HomeBackdrop />
 
       <HomeHeader
         onNew={openNew}
@@ -390,7 +421,7 @@ export default function App() {
         blocked={modal !== null || panelOpen}
       />
 
-      <main className="app-scroll min-h-0 flex-1 overflow-y-auto">
+      <main className="app-scroll relative z-10 min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-5xl px-4 pb-24 pt-8">
           {loading ? (
             <ListSkeleton columnCount={columnCount} />

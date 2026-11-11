@@ -18,6 +18,14 @@ export default function SettingsPanel({
   onChange,
   onToast,
 }: Props) {
+  const isDark = settings.colorMode === "dark";
+
+  const toggleColorMode = () => {
+    const colorMode = isDark ? "light" : "dark";
+    onChange({ ...settings, colorMode });
+    onToast(colorMode === "dark" ? "已切换到暗色模式" : "已切换到亮色模式");
+  };
+
   const choosePageSize = (pageSize: number) => {
     if (pageSize === settings.pageSize) return;
     onChange({ ...settings, pageSize });
@@ -34,7 +42,7 @@ export default function SettingsPanel({
   };
 
   const chooseNoteTheme = (noteTheme: NoteTheme) => {
-    if (noteTheme === settings.noteTheme) return;
+    if (isDark || noteTheme === settings.noteTheme) return;
     onChange({ ...settings, noteTheme });
     const label = NOTE_THEME_OPTIONS.find(
       (option) => option.value === noteTheme,
@@ -45,6 +53,33 @@ export default function SettingsPanel({
   return (
     <div className="px-5 py-5">
       <div className="flex flex-col gap-3">
+        <section className="rounded-2xl border border-line bg-card/65 p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <h2 className="text-[14px] font-medium">暗色模式</h2>
+              <p className="mt-1 text-[12px] leading-5 text-muted">
+                使用固定的深色背景；便签主题仅在亮色模式下生效。
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={isDark}
+              aria-label="暗色模式"
+              onClick={toggleColorMode}
+              className={`relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition ${
+                isDark ? "bg-(--theme-dark)" : "bg-line"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 size-5 rounded-full bg-paper shadow-sm transition ${
+                  isDark ? "left-[22px]" : "left-0.5"
+                }`}
+              />
+            </button>
+          </div>
+        </section>
+
         <section className="rounded-2xl border border-line bg-card/65 p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
@@ -125,7 +160,9 @@ export default function SettingsPanel({
         <section className="rounded-2xl border border-line bg-card/65 p-5">
           <h2 className="text-[14px] font-medium">便签配色</h2>
           <p className="mt-1 text-[12px] leading-5 text-muted">
-            首页便签和便签详情窗口会一起切换配色。
+            {isDark
+              ? "暗色模式下固定使用深色便签，切回亮色模式后才能切换主题。"
+              : "首页便签和便签详情窗口会一起切换配色。"}
           </p>
           <div
             role="radiogroup"
@@ -133,18 +170,24 @@ export default function SettingsPanel({
             className="mt-4 grid gap-2 sm:grid-cols-2"
           >
             {NOTE_THEME_OPTIONS.map((option) => {
-              const active = option.value === settings.noteTheme;
+              const selected = option.value === settings.noteTheme;
+              const active = selected && !isDark;
               return (
                 <button
                   key={option.value}
                   type="button"
                   role="radio"
-                  aria-checked={active}
+                  aria-checked={selected}
+                  aria-disabled={isDark}
+                  disabled={isDark}
+                  title={isDark ? "暗色模式下不可切换主题" : undefined}
                   onClick={() => chooseNoteTheme(option.value)}
-                  className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-left transition ${
-                    active
-                      ? "bg-(--theme-dark) text-paper"
-                      : "border-line bg-paper text-ink/75 hover:border-accent/40 hover:text-ink"
+                  className={`flex items-center gap-3 rounded-xl border p-3 text-left transition ${
+                    isDark
+                      ? "cursor-default border-line bg-paper text-ink/40 opacity-50"
+                      : active
+                        ? "cursor-pointer bg-(--theme-dark) text-paper"
+                        : "cursor-pointer border-line bg-paper text-ink/75 hover:border-accent/40 hover:text-ink"
                   }`}
                 >
                   <span
