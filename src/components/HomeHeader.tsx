@@ -1,10 +1,10 @@
 import { useEffect } from "react";
-import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useMenu } from "../hooks/useMenu";
 import { inTauri } from "../lib/runtime";
 import type { NoteType } from "../types";
 import MenuPanel from "./MenuPanel";
-import { MenuIcon, PlusIcon } from "./icons";
+import { MenuIcon, NoteIcon, PlusIcon, TodoIcon } from "./icons";
 import WindowControls from "./WindowControls";
 
 interface Props {
@@ -28,27 +28,19 @@ export default function HomeHeader({ onNew, onOpenPanel, blocked }: Props) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [add.setOpen, blocked]);
 
-  const handleAddClick = (
-    event: ReactMouseEvent<HTMLButtonElement>,
-    menu: ReturnType<typeof useMenu>,
-  ) => {
-    // 鼠标点击只负责打开；键盘 Enter/Space（detail 为 0）才做开合。
-    if (event.detail === 0) {
-      menu.setOpen((open) => !open);
-    } else {
-      menu.setOpen(true);
-    }
+  const handleAddClick = () => {
+    add.setOpen(false);
+    onNew("text");
   };
 
   const addControl = (
     <div className="relative" ref={add.ref} {...add.hoverProps}>
       <button
         type="button"
-        aria-label="添加便签"
-        aria-haspopup="menu"
-        aria-expanded={add.open}
-        onClick={(event) => handleAddClick(event, add)}
-        className="grid size-9 cursor-pointer place-items-center rounded-xl text-ink/65 transition hover:bg-ink/5 hover:text-ink"
+        aria-label="新建笔记"
+        title="新建笔记"
+        onClick={handleAddClick}
+        className="grid size-9 cursor-pointer place-items-center rounded-xl text-ink/65 transition hover:text-ink"
       >
         <PlusIcon className="size-5" />
       </button>
@@ -60,6 +52,7 @@ export default function HomeHeader({ onNew, onOpenPanel, blocked }: Props) {
         }`}
       >
         <MenuItem
+          icon={<NoteIcon className="size-4" />}
           onClick={() => {
             add.setOpen(false);
             onNew("text");
@@ -68,6 +61,7 @@ export default function HomeHeader({ onNew, onOpenPanel, blocked }: Props) {
           新建笔记
         </MenuItem>
         <MenuItem
+          icon={<TodoIcon className="size-4" />}
           onClick={() => {
             add.setOpen(false);
             onNew("todo");
@@ -80,7 +74,7 @@ export default function HomeHeader({ onNew, onOpenPanel, blocked }: Props) {
   );
 
   return (
-    <header className="sticky top-0 z-30 shrink-0 border-b border-line/70 bg-transparent">
+    <header className="sticky top-0 z-30 shrink-0 bg-transparent">
       <div
         className={
           inTauri
@@ -93,7 +87,7 @@ export default function HomeHeader({ onNew, onOpenPanel, blocked }: Props) {
           aria-label="功能菜单"
           aria-haspopup="dialog"
           onClick={onOpenPanel}
-          className="grid size-9 cursor-pointer place-items-center rounded-xl text-ink/65 transition hover:bg-ink/5 hover:text-ink"
+          className="grid size-9 cursor-pointer place-items-center rounded-xl hover:text-ink"
         >
           <MenuIcon className="size-5" />
         </button>
@@ -116,9 +110,11 @@ export default function HomeHeader({ onNew, onOpenPanel, blocked }: Props) {
 
 function MenuItem({
   children,
+  icon,
   onClick,
 }: {
   children: ReactNode;
+  icon?: ReactNode;
   onClick?: () => void;
 }) {
   return (
@@ -126,8 +122,13 @@ function MenuItem({
       type="button"
       role="menuitem"
       onClick={onClick}
-      className="flex w-full cursor-pointer items-center rounded-lg px-2.5 py-2 text-left text-[13px] text-ink transition hover:bg-(--note-bg)"
+      className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] text-ink transition hover:bg-(--note-bg)"
     >
+      {icon && (
+        <span className="grid size-4 shrink-0 place-items-center text-muted">
+          {icon}
+        </span>
+      )}
       {children}
     </button>
   );

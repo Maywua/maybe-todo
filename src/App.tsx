@@ -8,6 +8,7 @@ import HomeHeader from "./components/HomeHeader";
 import NoteCard from "./components/NoteCard";
 import NoteModal from "./components/NoteModal";
 import AboutPanel from "./components/AboutPanel";
+import AppearancePanel from "./components/AppearancePanel";
 import PanelSidebar, {
   PanelTopNav,
   type PanelTab,
@@ -40,6 +41,13 @@ type ModalState =
 
 const byOrder = (left: NoteSummary, right: NoteSummary) =>
   left.order - right.order || left.createdAt - right.createdAt;
+
+const PANEL_TAB_ORDER: PanelTab[] = [
+  "settings",
+  "appearance",
+  "trash",
+  "about",
+];
 
 const mergeSummaries = (
   current: NoteSummary[],
@@ -75,6 +83,8 @@ export default function App() {
   const [trashError, setTrashError] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelTab, setPanelTab] = useState<PanelTab>("settings");
+  const [panelDirection, setPanelDirection] = useState<"up" | "down">("down");
+  const panelContentRef = useRef<HTMLDivElement | null>(null);
   const [modal, setModal] = useState<ModalState | null>(null);
   const [modalNote, setModalNote] = useState<Note | null>(null);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
@@ -104,6 +114,7 @@ export default function App() {
           "--color-leaf": DARK_MODE_COLORS.leaf,
           "--overlay": DARK_MODE_COLORS.overlay,
           "--backdrop-dot": `color-mix(in srgb, ${DARK_MODE_COLORS.muted} 22%, transparent)`,
+          "--backdrop-line": `color-mix(in srgb, ${DARK_MODE_COLORS.muted} 16%, transparent)`,
           "--backdrop-glow": `color-mix(in srgb, ${DARK_MODE_COLORS.noteBackground} 80%, transparent)`,
         } as CSSProperties)
       : ({
@@ -117,12 +128,20 @@ export default function App() {
           "--color-line": `color-mix(in srgb, ${theme.colors.edge} 35%, ${theme.colors.appBackground})`,
           "--overlay": "rgb(27 26 22 / 0.25)",
           "--backdrop-dot": `color-mix(in srgb, ${theme.colors.edge} 52%, transparent)`,
+          "--backdrop-line": `color-mix(in srgb, ${theme.colors.edge} 40%, transparent)`,
           "--backdrop-glow": `color-mix(in srgb, ${theme.colors.background} 55%, transparent)`,
         } as CSSProperties);
 
   useEffect(() => {
     document.documentElement.style.colorScheme = settings.colorMode;
   }, [settings.colorMode]);
+
+  useEffect(() => {
+    const content = panelContentRef.current;
+    if (!content) return;
+    const scroller = content.closest(".app-scroll");
+    if (scroller instanceof HTMLElement) scroller.scrollTop = 0;
+  }, [panelTab]);
 
   const showToast = useCallback((message: string) => {
     setToast(message);
@@ -350,6 +369,9 @@ export default function App() {
   const selectPanelTab = useCallback(
     (tab: PanelTab) => {
       if (tab === panelTab) return;
+      const from = PANEL_TAB_ORDER.indexOf(panelTab);
+      const to = PANEL_TAB_ORDER.indexOf(tab);
+      setPanelDirection(to > from ? "down" : "up");
       setPanelTab(tab);
       if (tab === "trash") {
         setTrashed([]);
@@ -413,7 +435,9 @@ export default function App() {
     >
       {!booted && <Splash />}
 
-      <HomeBackdrop />
+      {settings.backgroundStyle !== "none" && (
+        <HomeBackdrop variant={settings.backgroundStyle} />
+      )}
 
       <HomeHeader
         onNew={openNew}
@@ -501,29 +525,43 @@ export default function App() {
             />
           }
         >
-          {panelTab === "settings" ? (
-            <SettingsPanel
-              settings={settings}
-              onChange={updateSettings}
-              onToast={showToast}
-            />
-          ) : panelTab === "trash" ? (
-            <TrashPanel
-              notes={trashed}
-              loading={trashLoading}
-              loadingMore={trashLoadingMore}
-              hasMore={trashHasMore}
-              error={trashError}
-              onLoadMore={loadMoreTrash}
-              onRetry={() => void loadTrash(true)}
-              onClose={closePanel}
-              onRestore={(id) => void handleRestore(id)}
-              onDeleteForever={(id) => void handleDeleteForever(id)}
-              onEmptyTrash={() => void handleEmptyTrash()}
-            />
-          ) : (
-            <AboutPanel />
-          )}
+          <div
+            key={panelTab}
+            ref={panelContentRef}
+            className={
+              panelDirection === "down" ? "animate-tab-down" : "animate-tab-up"
+            }
+          >
+            {panelTab === "settings" ? (
+              <SettingsPanel
+                settings={settings}
+                onChange={updateSettings}
+                onToast={showToast}
+              />
+            ) : panelTab === "appearance" ? (
+              <AppearancePanel
+                settings={settings}
+                onChange={updateSettings}
+                onToast={showToast}
+              />
+            ) : panelTab === "trash" ? (
+              <TrashPanel
+                notes={trashed}
+                loading={trashLoading}
+                loadingMore={trashLoadingMore}
+                hasMore={trashHasMore}
+                error={trashError}
+                onLoadMore={loadMoreTrash}
+                onRetry={() => void loadTrash(true)}
+                onClose={closePanel}
+                onRestore={(id) => void handleRestore(id)}
+                onDeleteForever={(id) => void handleDeleteForever(id)}
+                onEmptyTrash={() => void handleEmptyTrash()}
+              />
+            ) : (
+              <AboutPanel />
+            )}
+          </div>
         </WindowPanel>
       )}
 

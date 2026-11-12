@@ -17,7 +17,7 @@ import {
 } from "../lib/format";
 import { emptyContent, type Note, type NoteType } from "../types";
 import type { PanelStyle } from "../lib/settings";
-import { CloseIcon, LockIcon, MenuIcon } from "./icons";
+import { ArrowLeftIcon, CloseIcon, LockIcon, MenuIcon } from "./icons";
 import MenuPanel from "./MenuPanel";
 
 type Status = "idle" | "saving" | "saved" | "error";
@@ -322,6 +322,9 @@ export default function NoteModal({
         ? "animate-drawer-in"
         : "animate-window-flip-in";
 
+  const headerCloses = isCard || isDrawer;
+  const closeLabel = isCard ? "向下关闭" : isDrawer ? "向右关闭" : "关闭";
+
   return (
     <div
       className={`fixed inset-0 z-40 flex bg-[var(--overlay)] ${overlayPosition} ${
@@ -340,11 +343,17 @@ export default function NoteModal({
         onKeyDown={handleDialogKeyDown}
         className={`flex flex-col overflow-hidden border border-[var(--note-edge)] bg-[var(--note-window)] shadow-[0_30px_80px_-30px_rgba(27,26,22,0.6)] ${dialogShape} ${dialogAnimation}`}
       >
-        <div className="flex h-12 shrink-0 items-center justify-between px-3">
+        <div
+          onClick={headerCloses ? () => void close() : undefined}
+          className={`flex h-12 shrink-0 items-center justify-between px-3 transition-colors ${
+            headerCloses ? "cursor-pointer hover:bg-ink/5" : ""
+          }`}
+        >
           {showMenu ? (
             <div
               className="relative"
               ref={menuRef}
+              onClick={(event) => event.stopPropagation()}
               onMouseEnter={openMenu}
               onMouseLeave={closeMenuSoon}
             >
@@ -360,7 +369,7 @@ export default function NoteModal({
                     openMenu();
                   }
                 }}
-                className="relative grid size-8 cursor-pointer place-items-center rounded-lg text-muted transition hover:bg-ink/5 hover:text-ink"
+                className="relative grid size-8 cursor-pointer place-items-center rounded-lg text-muted transition hover:text-ink"
               >
                 <MenuIcon className="size-4" />
                 {status === "saving" && (
@@ -444,11 +453,21 @@ export default function NoteModal({
             )}
             <button
               type="button"
-              onClick={() => void close()}
-              aria-label="关闭"
-              className="grid size-8 cursor-pointer place-items-center rounded-lg text-muted transition hover:bg-ink/5 hover:text-ink"
+              onClick={(event) => {
+                event.stopPropagation();
+                void close();
+              }}
+              aria-label={closeLabel}
+              title={closeLabel}
+              className="grid size-8 cursor-pointer place-items-center rounded-lg text-muted transition hover:text-ink"
             >
-              <CloseIcon className="size-4" />
+              {isCard ? (
+                <ArrowLeftIcon className="size-4 -rotate-90" />
+              ) : isDrawer ? (
+                <ArrowLeftIcon className="size-4 rotate-180" />
+              ) : (
+                <CloseIcon className="size-4" />
+              )}
             </button>
           </div>
         </div>

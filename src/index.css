@@ -403,6 +403,36 @@
   }
 }
 
+@keyframes tab-in-down {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes tab-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-tab-down {
+  animation: tab-in-down 180ms cubic-bezier(0.22, 0.8, 0.32, 1);
+}
+
+.animate-tab-up {
+  animation: tab-in-up 180ms cubic-bezier(0.22, 0.8, 0.32, 1);
+}
+
 .home-backdrop-glow {
   position: absolute;
   left: -12rem;
@@ -435,6 +465,25 @@
   );
 }
 
+.home-backdrop-ruled {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    var(--backdrop-line) 0,
+    var(--backdrop-line) 1px,
+    transparent 1px,
+    transparent 29px
+  );
+  opacity: 0.62;
+}
+
+.home-backdrop-grid {
+  background-image:
+    linear-gradient(to right, var(--backdrop-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--backdrop-line) 1px, transparent 1px);
+  background-size: 22px 22px;
+  opacity: 0.5;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-rise,
   .animate-fade,
@@ -450,7 +499,9 @@
   .animate-drawer-out,
   .animate-window-flip-in,
   .animate-window-flip-out,
-  .animate-list-in {
+  .animate-list-in,
+  .animate-tab-down,
+  .animate-tab-up {
     animation: none;
   }
 

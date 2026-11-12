@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { PanelStyle } from "../lib/settings";
-import { CloseIcon } from "./icons";
+import { ArrowLeftIcon, CloseIcon } from "./icons";
 
 interface Props {
   title: string;
@@ -89,6 +89,14 @@ export default function WindowPanel({
         ? "animate-drawer-in"
         : "animate-window-flip-in";
 
+  const headerCloses = activeStyle === "card" || activeStyle === "drawer";
+  const closeLabel =
+    activeStyle === "card"
+      ? "向下关闭"
+      : activeStyle === "drawer"
+        ? "向右关闭"
+        : `关闭${title}`;
+
   return (
     <div
       className={`fixed inset-0 z-40 flex bg-[var(--overlay)] ${overlayPosition} ${
@@ -106,19 +114,41 @@ export default function WindowPanel({
         tabIndex={-1}
         className={`flex w-full flex-col overflow-hidden border border-line bg-card shadow-[0_30px_80px_-30px_rgba(27,26,22,0.6)] outline-none ${dialogShape} ${dialogAnimation}`}
       >
-        <div className="flex h-12 shrink-0 items-center gap-2 border-b border-line/70 px-3">
+        <div
+          onClick={headerCloses ? requestClose : undefined}
+          className={`flex h-12 shrink-0 items-center gap-2 border-b border-line/70 px-5 transition-colors ${
+            headerCloses ? "cursor-pointer hover:bg-ink/5" : ""
+          }`}
+        >
           <span className="text-[13px] font-semibold tracking-tight text-ink/80">
             {title}
           </span>
           <div className="min-w-0 flex-1" />
-          {actions}
+          {actions && (
+            <div
+              className="flex items-center"
+              onClick={(event) => event.stopPropagation()}
+            >
+              {actions}
+            </div>
+          )}
           <button
             type="button"
-            aria-label={`关闭${title}`}
-            onClick={requestClose}
-            className="grid size-8 cursor-pointer place-items-center rounded-lg text-muted transition hover:bg-ink/5 hover:text-ink"
+            aria-label={closeLabel}
+            title={closeLabel}
+            onClick={(event) => {
+              event.stopPropagation();
+              requestClose();
+            }}
+            className="grid size-8 cursor-pointer place-items-center rounded-lg text-muted transition hover:text-ink"
           >
-            <CloseIcon className="size-4" />
+            {activeStyle === "card" ? (
+              <ArrowLeftIcon className="size-4 -rotate-90" />
+            ) : activeStyle === "drawer" ? (
+              <ArrowLeftIcon className="size-4 rotate-180" />
+            ) : (
+              <CloseIcon className="size-4" />
+            )}
           </button>
         </div>
         <div className="flex min-h-0 flex-1">

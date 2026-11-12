@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
 import {
+  AppearanceIcon,
   InfoIcon,
   PowerIcon,
   SettingsIcon,
   TrashIcon,
 } from "./icons";
 
-export type PanelTab = "settings" | "trash" | "about";
+export type PanelTab = "settings" | "appearance" | "trash" | "about";
 
 interface Props {
   active: PanelTab;
@@ -20,6 +21,7 @@ const items: Array<{
   icon: ReactNode;
 }> = [
   { id: "settings", label: "设置", icon: <SettingsIcon className="size-4" /> },
+  { id: "appearance", label: "外观", icon: <AppearanceIcon className="size-4" /> },
   { id: "trash", label: "回收站", icon: <TrashIcon className="size-4" /> },
   { id: "about", label: "关于", icon: <InfoIcon className="size-4" /> },
 ];
@@ -39,7 +41,7 @@ export default function PanelSidebar({ active, onSelect, onExit }: Props) {
               className={`flex cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2 text-left text-[13px] transition ${
                 selected
                   ? "bg-(--theme-dark) text-paper"
-                  : "text-ink/70 hover:bg-ink/5 hover:text-ink"
+                  : "text-ink/70 hover:text-ink"
               }`}
             >
               <span
@@ -87,7 +89,7 @@ export function PanelTopNav({ active, onSelect }: Props) {
             className={`grid size-8 cursor-pointer place-items-center rounded-lg transition ${
               selected
                 ? "bg-(--theme-dark) text-paper"
-                : "text-muted hover:bg-ink/5 hover:text-ink"
+                : "text-muted hover:text-ink"
             }`}
           >
             {item.icon}

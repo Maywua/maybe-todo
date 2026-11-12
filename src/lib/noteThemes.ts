@@ -39,7 +39,7 @@ export const NOTE_THEMES: Record<NoteTheme, NoteThemeDefinition> = {  yellow: {
   blue: {
     value: "blue",
     label: "蓝色",
-    hint: "浪花是天空倒映的涟漪",
+    hint: "浪花是天空泛起的涟漪",
     colors: {
       appBackground: "#edf2f6",
       background: "#d7e8f2",
@@ -63,7 +63,7 @@ export const NOTE_THEMES: Record<NoteTheme, NoteThemeDefinition> = {  yellow: {
   cyan: {
     value: "cyan",
     label: "青色",
-    hint: "等烟雨，亦等你",
+    hint: "万紫千红中一抹宁静的色彩",
     colors: {
       appBackground: "#eaf2f3",
       background: "#d4eaec",
